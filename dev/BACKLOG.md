@@ -24,12 +24,6 @@ Detail lives in `dev/tasks/<task-id>.md` when needed (no `task-` filename prefix
 
 ---
 
-## mcp-streamable-http
-- status: done
-- goal: Drop deprecated HTTP+SSE MCP; serve Streamable HTTP only on `/mcp`; rewrite docs/ADR.
-- done_when: Old session SSE gone; POST Streamable HTTP works; tests + docs + CHANGELOG Unreleased.
-- notes: Done — ADR-017; smoke clients then major release. [`tasks/mcp-streamable-http.md`](tasks/mcp-streamable-http.md).
-
 ## cme-markdown-gap-analysis
 - status: ready
 - goal: Extract confluence-markdown-exporter conversion behaviors (tests + Converter) and gap-analyze vs our CSF→Markdown rules; recommend follow-ups only.

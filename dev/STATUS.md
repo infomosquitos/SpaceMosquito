@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-09-16
+Last updated: 2026-09-17
 
 ## Current focus
 
-**mcp-streamable-http** done — smoke Cursor / Claude / Gemini against Streamable HTTP, then major release when ready.
+Release **0.5.0** prepared — tag and publish when ready.
 
 ## Active task
 
@@ -16,6 +16,6 @@ _None._
 
 ## Next action
 
-1. Smoke MCP clients with http / streamable-http (not SSE) — see [`docs/guides/configure-mcp.md`](../docs/guides/configure-mcp.md).
-2. Cut major release when satisfied ([`RELEASE.md`](RELEASE.md)).
-3. Or pick **cme-markdown-gap-analysis**.
+1. Tag and push: `git tag v0.5.0 && git push origin v0.5.0` (see [`RELEASE.md`](RELEASE.md)).
+2. Confirm GitHub Release assets (binaries, Firefox XPI, Chrome zip, SHA256SUMS).
+3. Resume **cme-markdown-gap-analysis** when ready.
