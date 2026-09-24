@@ -4,7 +4,7 @@ import { captureAndSave } from './lib/session';
 import { checkAuthStatus, AuthStatus } from './lib/auth';
 import { SpaceInfo, JobSnapshot } from './lib/types';
 
-const DEFAULT_BACKEND_URL = 'http://localhost:8081';
+const DEFAULT_BACKEND_URL = 'http://localhost:56403';
 
 function isConfluenceUrl(url: string): boolean {
   if (!url) return false;

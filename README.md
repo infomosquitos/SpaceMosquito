@@ -34,7 +34,7 @@ SPACEMOSQUITO_DATA_DIR=./data ./spacemosquito serve
 
 1. Start the server: `./spacemosquito serve`
 2. Load the Space Mosquito extension ([Install](docs/INSTALL.md#browser-extension) or [from source](docs/INSTALL-FROM-SOURCE.md#browser-extensions)).
-3. Open Confluence and use the extension to send cookies to `http://localhost:8081`.
+3. Open Confluence and use the extension to send cookies to `http://localhost:56403`.
 
 ## Crawl a space
 
@@ -58,7 +58,7 @@ Or trigger a crawl via the extension or `POST /api/crawl`.
 
 ## MCP (agents)
 
-SpaceMosquito serves MCP over Streamable HTTP at `http://127.0.0.1:8081/mcp` (same process as `serve`). Agents can search and read the local catalog — see **[Configure MCP](docs/guides/configure-mcp.md)**.
+SpaceMosquito serves MCP over Streamable HTTP at `http://127.0.0.1:56403/mcp` (same process as `serve`). Agents can search and read the local catalog — see **[Configure MCP](docs/guides/configure-mcp.md)**.
 
 ## Search
 
@@ -86,8 +86,8 @@ REST and MCP also accept `limit` (`GET /api/search?q=...&limit=50`, MCP `conflue
 ./spacemosquito get-page 250347937
 ./spacemosquito get-page 42 TST
 
-curl -s http://localhost:8081/api/pages/250347937
-curl -s "http://localhost:8081/api/pages/42?space_key=TST"
+curl -s http://localhost:56403/api/pages/250347937
+curl -s "http://localhost:56403/api/pages/42?space_key=TST"
 ```
 
 ## Commands
@@ -116,7 +116,7 @@ Docker Compose / PostgreSQL mode has been removed. To keep crawl artifacts witho
 3. Copy your old Compose bind-mount `saved-data/` (or `./saved`) → `~/.spacemosquito/saved/`
 4. `./spacemosquito bootstrap import-saved`
 5. `./spacemosquito reindex --content`
-6. Point the extension at `http://localhost:8081` and run `./spacemosquito serve`
+6. Point the extension at `http://localhost:56403` and run `./spacemosquito serve`
 
 Useful flags:
 

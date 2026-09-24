@@ -24,13 +24,13 @@
   },
   "host_permissions": [
     "<all_urls>",
-    "http://localhost:8081/*",
-    "http://localhost:8081/*",
-    "http://127.0.0.1:8081/*",
-    "http://127.0.0.1:8081/*"
+    "http://localhost:56403/*",
+    "http://localhost:56403/*",
+    "http://127.0.0.1:56403/*",
+    "http://127.0.0.1:56403/*"
   ],
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; style-src 'self'; object-src 'self'; connect-src 'self' http://localhost:8081 http://localhost:8081 http://127.0.0.1:8081 http://127.0.0.1:8081 ws://localhost:8081 ws://127.0.0.1:8081"
+    "extension_pages": "script-src 'self'; style-src 'self'; object-src 'self'; connect-src 'self' http://localhost:56403 http://localhost:56403 http://127.0.0.1:56403 http://127.0.0.1:56403 ws://localhost:56403 ws://127.0.0.1:56403"
   },
   "background": {
     "scripts": [

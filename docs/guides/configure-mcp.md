@@ -3,7 +3,7 @@
 SpaceMosquito exposes an **MCP** (Model Context Protocol) server over
 **Streamable HTTP** so agents can search and read crawled Confluence content.
 
-Default URL: `http://127.0.0.1:8081/mcp`
+Default URL: `http://127.0.0.1:56403/mcp`
 
 MCP tools read the **local catalog** (SQLite). Capture a session and crawl (or
 import) spaces before expecting useful results. MCP does **not** start crawls;
@@ -30,7 +30,7 @@ Add a remote MCP server — either:
 {
   "mcpServers": {
     "spacemosquito": {
-      "url": "http://127.0.0.1:8081/mcp"
+      "url": "http://127.0.0.1:56403/mcp"
     }
   }
 }
@@ -41,7 +41,7 @@ Add a remote MCP server — either:
 **CLI:**
 
 ```sh
-claude mcp add --transport http spacemosquito http://127.0.0.1:8081/mcp
+claude mcp add --transport http spacemosquito http://127.0.0.1:56403/mcp
 ```
 
 **Project** `.mcp.json` or user config (`~/.claude.json`):
@@ -51,7 +51,7 @@ claude mcp add --transport http spacemosquito http://127.0.0.1:8081/mcp
   "mcpServers": {
     "spacemosquito": {
       "type": "http",
-      "url": "http://127.0.0.1:8081/mcp"
+      "url": "http://127.0.0.1:56403/mcp"
     }
   }
 }
@@ -71,7 +71,7 @@ http transport), not SSE.
 over `sse`):
 
 ```sh
-gemini mcp add --transport http spacemosquito http://127.0.0.1:8081/mcp
+gemini mcp add --transport http spacemosquito http://127.0.0.1:56403/mcp
 # optional: -s user  → write to ~/.gemini/settings.json
 ```
 
@@ -81,7 +81,7 @@ gemini mcp add --transport http spacemosquito http://127.0.0.1:8081/mcp
 {
   "mcpServers": {
     "spacemosquito": {
-      "httpUrl": "http://127.0.0.1:8081/mcp"
+      "httpUrl": "http://127.0.0.1:56403/mcp"
     }
   }
 }
@@ -94,7 +94,7 @@ Docs: [MCP servers with the Gemini CLI](https://google-gemini.github.io/gemini-c
 Any client that supports **remote MCP over Streamable HTTP** can use:
 
 ```text
-http://127.0.0.1:8081/mcp
+http://127.0.0.1:56403/mcp
 ```
 
 Field names vary (`url`, `httpUrl`, `type: "http"` / `"streamable-http"`). No
@@ -116,14 +116,14 @@ Page `content` is **Markdown** (same as CLI / REST).
 ## Smoke test without an IDE
 
 ```sh
-curl -s -X POST "http://127.0.0.1:8081/mcp" \
+curl -s -X POST "http://127.0.0.1:56403/mcp" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"curl","version":"0"}}}'
 ```
 
 ```sh
-curl -s -X POST "http://127.0.0.1:8081/mcp" \
+curl -s -X POST "http://127.0.0.1:56403/mcp" \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'

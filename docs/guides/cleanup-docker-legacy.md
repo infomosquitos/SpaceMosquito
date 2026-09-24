@@ -67,7 +67,7 @@ cp -R ../saved-data/* ~/.spacemosquito/saved/   # adjust paths as needed
 ./spacemosquito serve
 ```
 
-Point the Space Mosquito extension at `http://localhost:8081`.
+Point the Space Mosquito extension at `http://localhost:56403`.
 
 ## After packaging removal
 

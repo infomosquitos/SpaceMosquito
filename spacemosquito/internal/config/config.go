@@ -106,7 +106,7 @@ func Load(path string) (*Config, error) {
 		cfg.Storage.BasePath = "./saved"
 	}
 	if cfg.MCP.Port == 0 {
-		cfg.MCP.Port = 8081
+		cfg.MCP.Port = 56403
 	}
 	if cfg.MCP.Timeout == 0 {
 		cfg.MCP.Timeout = 3600

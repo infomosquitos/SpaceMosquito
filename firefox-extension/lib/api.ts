@@ -2,7 +2,7 @@
 import { Cookie, Session, SessionStatus, CrawlJob, CrawlSpace, CronSpaceConfig } from './types';
 
 export class ApiClient {
-  private baseUrl: string = 'http://localhost:8081';
+  private baseUrl: string = 'http://localhost:56403';
 
   constructor(baseUrl?: string) {
     if (baseUrl) {

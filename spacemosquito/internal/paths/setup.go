@@ -91,7 +91,7 @@ func defaultDockerlessConfig(dataDir, encryptionKey string) *config.Config {
 			FilePath:      filepath.Join(dataDir, "session.enc"),
 		},
 		MCP: config.MCPConfig{
-			Port:    8081,
+			Port:    56403,
 			Host:    "127.0.0.1",
 			Timeout: 3600,
 		},

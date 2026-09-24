@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Breaking**: Default HTTP/MCP listen port is **56403** (was 8081). Update extension backend URL and MCP client configs.
+
 ## [0.5.0] - 2026-09-17
 
 ### Changed

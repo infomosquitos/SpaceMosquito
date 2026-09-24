@@ -235,7 +235,7 @@ async function setupTabs() {
 async function getSettings(): Promise<ExtensionSettings & { backend_url: string; auto_renew: boolean }> {
   const data: any = await chrome.storage.local.get(['backend_url', 'auto_renew']);
   return {
-    backend_url: data.backend_url || 'http://localhost:8081',
+    backend_url: data.backend_url || 'http://localhost:56403',
     crawl_depth: 'all',
     auto_renew: !!data.auto_renew,
   };

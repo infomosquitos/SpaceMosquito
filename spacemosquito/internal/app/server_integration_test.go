@@ -44,7 +44,7 @@ func testConfig(t *testing.T) *config.Config {
 		},
 		MCP: config.MCPConfig{
 			Host:    "127.0.0.1",
-			Port:    8081,
+			Port:    56403,
 			Timeout: 3600,
 		},
 		Cron: config.CronConfig{

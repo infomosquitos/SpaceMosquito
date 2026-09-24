@@ -51,8 +51,8 @@ session:
 	if cfg.Storage.BasePath != "./saved" {
 		t.Errorf("storage.base_path = %q, want ./saved", cfg.Storage.BasePath)
 	}
-	if cfg.MCP.Port != 8081 {
-		t.Errorf("mcp.port = %d, want 8081", cfg.MCP.Port)
+	if cfg.MCP.Port != 56403 {
+		t.Errorf("mcp.port = %d, want 56403", cfg.MCP.Port)
 	}
 	if cfg.MCP.Timeout != 3600 {
 		t.Errorf("mcp.session_timeout = %d, want 3600", cfg.MCP.Timeout)

@@ -23,7 +23,7 @@ package "Host Machine" {
   [Firefox / Chrome] as browser
   browser --> "Space Mosquito Extension" : captures cookies, manages UI
 
-  [spacemosquito binary :8081] as app
+  [spacemosquito binary :56403] as app
   app --> [HTTP API]
   app --> [MCP Streamable HTTP]
   app --> [Cron Scheduler]
@@ -175,7 +175,7 @@ Local binary only. Data directory layout:
 | `browser/` | Optional rod Chromium cache |
 | `cron-config.json` | Per-space cron overrides |
 
-Extensions run on the host and talk to `http://localhost:8081`.
+Extensions run on the host and talk to `http://localhost:56403`.
 
 ## Known Limitations
 

@@ -22,7 +22,7 @@ embedder:
   model: nomic-embed-text
 
 mcp:
-  port: 8081
+  port: 56403
   host: "127.0.0.1"
   # session_timeout: ignored (legacy; MCP is stateless Streamable HTTP)
   expose_internal_ids: false

@@ -87,7 +87,7 @@ Regenerate existing catalogs after upgrade:
 MCP is `POST /mcp` with a JSON body (not a long-lived stream). Example:
 
 ```sh
-curl -s -X POST http://localhost:8081/mcp \
+curl -s -X POST http://localhost:56403/mcp \
   -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"tools/list","params":{}}'
@@ -96,8 +96,8 @@ curl -s -X POST http://localhost:8081/mcp \
 Get a page by Confluence ID (REST):
 
 ```sh
-curl -s http://localhost:8081/api/pages/42
-curl -s "http://localhost:8081/api/pages/42?space_key=TST"
+curl -s http://localhost:56403/api/pages/42
+curl -s "http://localhost:56403/api/pages/42?space_key=TST"
 ```
 
 ## Coming from Docker
