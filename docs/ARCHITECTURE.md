@@ -11,55 +11,29 @@ Docker / PostgreSQL are not part of the runtime. See [ADR-016](../adr/016-sqlite
 
 ## System Components
 
-```plantuml
-@startuml
-skinparam componentStyle uml2
-skinparam rectangle {
-  BackgroundColor white
-  BorderColor gray
-}
+```mermaid
+flowchart TB
+  ext["Browser extension<br/>(Firefox / Chrome)"]
 
-package "Host Machine" {
-  [Firefox / Chrome] as browser
-  browser --> "Space Mosquito Extension" : captures cookies, manages UI
+  subgraph binary["spacemosquito binary :56403"]
+    mcp["MCP Streamable HTTP"]
+    api["HTTP API"]
+    cron["Cron Scheduler"]
+    storage["Storage"]
+    scraper["Scraper<br/>(API + browser fallback)"]
+    session["Session AES-GCM"]
+  end
 
-  [spacemosquito binary :56403] as app
-  app --> [HTTP API]
-  app --> [MCP Streamable HTTP]
-  app --> [Cron Scheduler]
-  app --> [Scraper\n(API + browser fallback)]
-  app --> [Storage]
-  app --> [Session\nAES-GCM]
+  disk["Data dir<br/>~/.spacemosquito"]
+  db["SQLite + FTS5"]
 
-  rectangle "SQLite + FTS5" as db {
-    [spaces]
-    [pages]
-    [pages_fts]
-  }
-}
-
-[Space Mosquito Extension] --> [HTTP API] : REST API
-[HTTP API] --> [Scraper]
-[Scraper] --> [Confluence Cloud\natlassian.net] : API / browser
-[Scraper] --> [Confluence Server\nself-hosted] : API / browser
-[app] --> [db]
-
-note top of browser
-  Captures Confluence session cookies
-  Provides popup UI for session/crawl/cron
-end note
-
-note right of app
-  Data dir (~/.spacemosquito or --data-dir):
-  config.yaml, cron-config.json,
-  session.enc, saved/, browser/, spacemosquito.db
-end note
-
-@enduml
+  ext -->|"REST · session / crawl / cron"| api
+  api --> scraper
+  storage -->|"saved pages"| disk
+  storage -->|"pages + FTS"| db
+  session -->|"stored at"| disk
+  scraper -->|"API / browser"| confluence["Confluence<br/>Cloud / Server"]
 ```
-
-> **Rendering**: Use the PlantUML VS Code extension, `plantuml` CLI, or
-> [plantuml.com/plantuml](https://www.plantuml.com/plantuml).
 
 ## Entry Points
 
