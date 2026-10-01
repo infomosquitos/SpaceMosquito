@@ -27,7 +27,8 @@ flowchart TB
   disk["Data dir<br/>~/.spacemosquito"]
   db["SQLite + FTS5"]
 
-  ext -->|"REST · session / crawl / cron"| api
+  ext -->|"session · crawl · cron"| api
+  api -->|"encrypt"| session
   api --> scraper
   storage -->|"saved pages"| disk
   storage -->|"pages + FTS"| db
