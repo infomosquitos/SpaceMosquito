@@ -100,6 +100,24 @@ curl -s http://localhost:56403/api/pages/42
 curl -s "http://localhost:56403/api/pages/42?space_key=TST"
 ```
 
+## Dependency vulnerabilities
+
+Use **GitHub Dependabot** for alerts and **security-update PRs** (npm extensions, Go
+modules, GitHub Actions). There is **no** scheduled version-bump config yet.
+
+Enable once per repo (Settings → Code security and analysis), or via API:
+
+- Dependabot alerts: on
+- Dependabot security updates: on
+
+Expect separate PRs for `chrome-extension` and `firefox-extension` when both are
+affected — that is OK for now.
+
+CI (**warn-only**, does not fail the job):
+
+- [`deps-audit.yml`](../.github/workflows/deps-audit.yml) — `govulncheck` + `npm audit --audit-level=high`
+- Also runs `govulncheck` on [`go-test.yml`](../.github/workflows/go-test.yml) and `npm audit` before extension packaging on release
+
 ## Coming from Docker
 
 Docker / Postgres packaging is removed. See [README.md](../README.md#coming-from-docker).

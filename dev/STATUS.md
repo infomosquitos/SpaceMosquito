@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-09-24
+Last updated: 2026-10-13
 
 ## Current focus
 
-Release **0.6.0** prepared — tag and publish when ready.
+**deps-vuln-automation** done in-repo. Enable Dependabot in GitHub Settings if not already on.
 
 ## Active task
 
@@ -16,6 +16,5 @@ _None._
 
 ## Next action
 
-1. Tag and push: `git tag v0.6.0 && git push origin v0.6.0` (see [`RELEASE.md`](RELEASE.md)).
-2. Confirm GitHub Release assets (binaries, Firefox XPI, Chrome zip, SHA256SUMS).
-3. Resume **cme-markdown-gap-analysis** when ready.
+1. GitHub → Settings → Code security → turn on **Dependabot alerts** + **Dependabot security updates**.
+2. Optionally pick **cme-markdown-gap-analysis**.

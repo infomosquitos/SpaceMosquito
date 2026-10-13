@@ -82,6 +82,12 @@ jobs:
             firefox-extension/package-lock.json
             chrome-extension/package-lock.json
 
+      - name: npm audit (warn-only)
+        continue-on-error: true
+        run: |
+          (cd chrome-extension && npm ci && npm audit --audit-level=high)
+          (cd firefox-extension && npm ci && npm audit --audit-level=high)
+
       - name: Build extension packages
         timeout-minutes: 30
         env:

@@ -24,6 +24,12 @@ Detail lives in `dev/tasks/<task-id>.md` when needed (no `task-` filename prefix
 
 ---
 
+## deps-vuln-automation
+- status: done
+- goal: Automate vuln detection/updates for npm extensions + Go (Dependabot security updates; CI warn-only audit/govulncheck).
+- done_when: Alerts+security updates on; govulncheck + npm audit warn in CI; no weekly version bumps; docs note.
+- notes: Done — CI workflows + docs. Enable Dependabot alerts/security updates in GitHub Settings. [`tasks/deps-vuln-automation.md`](tasks/deps-vuln-automation.md).
+
 ## cme-markdown-gap-analysis
 - status: ready
 - goal: Extract confluence-markdown-exporter conversion behaviors (tests + Converter) and gap-analyze vs our CSF→Markdown rules; recommend follow-ups only.
