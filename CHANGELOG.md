@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- HTTP request start/complete logs are **debug** (was info) to reduce spam.
+
 ## [0.6.0] - 2026-09-24
 
 ### Changed

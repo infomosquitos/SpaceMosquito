@@ -30,7 +30,7 @@ func LoggingMiddleware(next http.Handler, log logging.Sugar) http.Handler {
 		start := time.Now()
 		requestID := uuid.New().String()[:8]
 
-		log.Infow("request started",
+		log.Debugw("request started",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"remote_addr", r.RemoteAddr,
@@ -40,7 +40,7 @@ func LoggingMiddleware(next http.Handler, log logging.Sugar) http.Handler {
 		status := writeResponse(w, r, next)
 
 		duration := time.Since(start)
-		log.Infow("request completed",
+		log.Debugw("request completed",
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", status,
