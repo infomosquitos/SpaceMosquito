@@ -15,8 +15,8 @@ jobs:
       run:
         working-directory: spacemosquito
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: spacemosquito/go.mod
           cache-dependency-path: spacemosquito/go.sum
@@ -42,8 +42,8 @@ jobs:
       run:
         working-directory: spacemosquito
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-go@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: spacemosquito/go.mod
           cache-dependency-path: spacemosquito/go.sum
@@ -64,7 +64,7 @@ jobs:
             ./cmd/spacemosquito
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: spacemosquito-${{ matrix.goos }}-${{ matrix.goarch }}
           path: dist/spacemosquito-*
@@ -73,8 +73,8 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
           cache: npm
@@ -100,7 +100,7 @@ jobs:
           ./scripts/build-extension-zips.sh "$VERSION" dist
 
       - name: Upload extension artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: spacemosquito-extensions
           path: |
@@ -111,10 +111,10 @@ jobs:
     needs: [build, build-extensions]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Download artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v8
         with:
           path: dist
           merge-multiple: true
@@ -125,7 +125,7 @@ jobs:
           sha256sum spacemosquito-* > SHA256SUMS || shasum -a 256 spacemosquito-* > SHA256SUMS
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             dist/spacemosquito-*
