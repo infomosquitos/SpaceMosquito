@@ -1,6 +1,6 @@
 # Install
 
-Install SpaceMosquito from a [GitHub Release](https://github.com/webdunesurfer/SpaceMosquito/releases).
+Install SpaceMosquito from a [GitHub Release](https://github.com/infomosquitos/SpaceMosquito/releases).
 
 ## Requirements
 

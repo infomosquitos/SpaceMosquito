@@ -1,0 +1,50 @@
+# Dependabot version updates (monthly, grouped — same shape as ticketmosquito)
+version: 2
+updates:
+  - package-ecosystem: "gomod"
+    directory: "/spacemosquito"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+    groups:
+      go-modules:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/chrome-extension"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+    groups:
+      chrome-extension-npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "npm"
+    directory: "/firefox-extension"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+    groups:
+      firefox-extension-npm:
+        patterns:
+          - "*"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    labels:
+      - "dependencies"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

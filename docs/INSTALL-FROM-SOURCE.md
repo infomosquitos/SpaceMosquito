@@ -20,7 +20,7 @@ Committed `*-extension/assets/icon-{active,inactive}-*.png` are enough for a nor
 ## Binary
 
 ```sh
-git clone https://github.com/webdunesurfer/SpaceMosquito.git
+git clone https://github.com/infomosquitos/SpaceMosquito.git
 cd SpaceMosquito
 make build
 # binary: spacemosquito/spacemosquito

@@ -1,6 +1,6 @@
 # SpaceMosquito
 
-[![SpaceMosquito](firefox-extension/assets/icon.svg)](https://github.com/webdunesurfer/SpaceMosquito)
+[![SpaceMosquito](firefox-extension/assets/icon.svg)](https://github.com/infomosquitos/SpaceMosquito)
 
 Confluence space scraper, indexer, and search engine. Uses the Confluence REST API for content extraction (with headless browser fallback), stores pages locally in **SQLite + FTS5**, and exposes an MCP server plus browser extensions for session management and crawl control.
 

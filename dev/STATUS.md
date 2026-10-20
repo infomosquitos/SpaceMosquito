@@ -4,7 +4,7 @@ Last updated: 2026-10-13
 
 ## Current focus
 
-**deps-vuln-automation** done in-repo. Enable Dependabot in GitHub Settings if not already on.
+**deps-vuln-automation** done — CI + monthly `.github/dependabot.yml`. Confirm alerts/security updates in GitHub Settings.
 
 ## Active task
 

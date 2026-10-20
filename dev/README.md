@@ -102,13 +102,10 @@ curl -s "http://localhost:56403/api/pages/42?space_key=TST"
 
 ## Dependency vulnerabilities
 
-Use **GitHub Dependabot** for alerts and **security-update PRs** (npm extensions, Go
-modules, GitHub Actions). There is **no** scheduled version-bump config yet.
+Use **GitHub Dependabot** for:
 
-Enable once per repo (Settings → Code security and analysis), or via API:
-
-- Dependabot alerts: on
-- Dependabot security updates: on
+- **Alerts** + **security-update PRs** (enable in Settings → Code security and analysis)
+- **Monthly version bumps** — [`.github/dependabot.yml`](../.github/dependabot.yml) (gomod under `/spacemosquito`, npm for both extensions, GitHub Actions; grouped, limit 3 open PRs per ecosystem)
 
 Expect separate PRs for `chrome-extension` and `firefox-extension` when both are
 affected — that is OK for now.
