@@ -110,10 +110,12 @@ Use **GitHub Dependabot** for:
 Expect separate PRs for `chrome-extension` and `firefox-extension` when both are
 affected — that is OK for now.
 
-CI (**warn-only**, does not fail the job):
+CI:
 
-- [`deps-audit.yml`](../.github/workflows/deps-audit.yml) — `govulncheck` + `npm audit --audit-level=high`
-- Also runs `govulncheck` on [`go-test.yml`](../.github/workflows/go-test.yml) and `npm audit` before extension packaging on release
+- [`go-test.yml`](../.github/workflows/go-test.yml) — `go test -race` (+ warn-only `govulncheck`)
+- [`extension-build.yml`](../.github/workflows/extension-build.yml) — `npm ci` + `npm run build` for both extensions
+- [`deps-audit.yml`](../.github/workflows/deps-audit.yml) — warn-only `govulncheck` + `npm audit --audit-level=high`
+- Release tags also package extensions (see [`release.yml`](../.github/workflows/release.yml))
 
 ## Coming from Docker
 
