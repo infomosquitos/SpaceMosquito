@@ -364,6 +364,44 @@ func TestSpacePagesHandler_validation(t *testing.T) {
 	})
 }
 
+func TestHandler_SessionStatus_requiresURL(t *testing.T) {
+	key := "12345678901234567890123456789012"
+	store := session.NewStore(t.TempDir()+"/session.enc", logging.Sugar{})
+	h := New(store, testConfig(key), testLogger(t))
+	if err := store.Upsert(&session.Session{
+		ConfluenceURL: "https://wiki.example.com",
+		Cookies:       []session.Cookie{{Name: "JSESSIONID", Value: "x"}},
+		CapturedAt:    time.Now(),
+	}, key); err != nil {
+		t.Fatal(err)
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/session/status", nil)
+	rec := httptest.NewRecorder()
+	h.SessionStatus(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["valid"] != false || body["message"] != "url query parameter is required" {
+		t.Fatalf("body = %v", body)
+	}
+}
+
+func TestHandler_ValidateSession_requiresURL(t *testing.T) {
+	key := "12345678901234567890123456789012"
+	store := session.NewStore(t.TempDir()+"/session.enc", logging.Sugar{})
+	h := New(store, testConfig(key), testLogger(t))
+	req := httptest.NewRequest(http.MethodPost, "/api/session/validate", bytes.NewReader([]byte(`{}`)))
+	rec := httptest.NewRecorder()
+	h.ValidateSession(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d body=%s", rec.Code, rec.Body.String())
+	}
+}
+
 func TestHandler_SessionStatus_TTL(t *testing.T) {
 	key := "12345678901234567890123456789012"
 	store := session.NewStore(t.TempDir()+"/session.enc", logging.Sugar{})

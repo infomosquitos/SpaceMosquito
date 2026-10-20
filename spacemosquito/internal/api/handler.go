@@ -177,14 +177,20 @@ func (h *Handler) SessionStatus(w http.ResponseWriter, r *http.Request) {
 
 	encKey := h.cfg.Session.EncryptionKey
 	confluenceURL := r.URL.Query().Get("url")
-
-	var sess *session.Session
-	var err error
-	if confluenceURL != "" {
-		sess, err = h.store.GetForURL(encKey, confluenceURL)
-	} else {
-		sess, err = h.store.Load(encKey)
+	if confluenceURL == "" {
+		h.log.Infow("session status",
+			"valid", false,
+			"exists", true,
+			"decision", "url_required")
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"valid":   false,
+			"message": "url query parameter is required",
+			"exists":  true,
+		})
+		return
 	}
+
+	sess, err := h.store.GetForURL(encKey, confluenceURL)
 	if err != nil {
 		h.log.Errorw("session status: load failed", "error", err)
 		writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -257,14 +263,14 @@ func (h *Handler) ValidateSession(w http.ResponseWriter, r *http.Request) {
 		ConfluenceURL string `json:"confluence_url"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&req)
-
-	var sess *session.Session
-	var err error
-	if req.ConfluenceURL != "" {
-		sess, err = h.store.GetForURL(encKey, req.ConfluenceURL)
-	} else {
-		sess, err = h.store.Load(encKey)
+	if req.ConfluenceURL == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{
+			"error": "confluence_url is required",
+		})
+		return
 	}
+
+	sess, err := h.store.GetForURL(encKey, req.ConfluenceURL)
 	if err != nil {
 		h.log.Errorw("validate session: load failed", "error", err)
 		writeJSON(w, http.StatusOK, map[string]interface{}{

@@ -1,7 +1,6 @@
 package session
 
 import (
-	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -67,10 +66,6 @@ func TestStore_UpsertTwoHosts(t *testing.T) {
 	if store.Count(testKey) != 2 {
 		t.Fatalf("count = %d, want 2", store.Count(testKey))
 	}
-
-	if _, err := store.Load(testKey); err == nil {
-		t.Fatal("Load with multiple sessions should error")
-	}
 }
 
 func TestStore_UpsertReplacesOneSiteOnly(t *testing.T) {
@@ -115,46 +110,5 @@ func TestStore_GetForURL_MissingHost(t *testing.T) {
 	_, err := store.GetForURL(testKey, "https://other.example.com/spaces/X")
 	if !errors.Is(err, ErrNoSessionForHost) {
 		t.Fatalf("want ErrNoSessionForHost, got %v", err)
-	}
-}
-
-func TestStore_MigrateLegacySingleSession(t *testing.T) {
-	tmpFile := t.TempDir() + "/session.enc"
-	store := NewStore(tmpFile, logging.Sugar{})
-
-	legacy := &Session{
-		ConfluenceURL: "https://legacy.example.com/wiki/spaces/L",
-		Cookies:       []Cookie{{Name: "t", Value: "legacy"}},
-		CapturedAt:    time.Now(),
-	}
-	raw, err := json.Marshal(legacy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := store.encryptWrite(raw, testKey); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := store.GetForURL(testKey, "https://legacy.example.com/display/X")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Cookies[0].Value != "legacy" {
-		t.Fatalf("got %+v", got.Cookies)
-	}
-
-	if err := store.Upsert(&Session{
-		ConfluenceURL: "https://other.example.com/x",
-		Cookies:       []Cookie{{Name: "t", Value: "new"}},
-		CapturedAt:    time.Now(),
-	}, testKey); err != nil {
-		t.Fatal(err)
-	}
-	got, err = store.GetForURL(testKey, "https://legacy.example.com/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Cookies[0].Value != "legacy" {
-		t.Fatal("legacy session lost after upsert of other host")
 	}
 }

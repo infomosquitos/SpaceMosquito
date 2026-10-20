@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-10-13
+Last updated: 2026-10-20
 
 ## Current focus
 
-**deps-vuln-automation** done — CI + monthly `.github/dependabot.yml`. Confirm alerts/security updates in GitHub Settings.
+_None._ Next optional: **cme-markdown-gap-analysis**.
 
 ## Active task
 
@@ -16,5 +16,5 @@ _None._
 
 ## Next action
 
-1. GitHub → Settings → Code security → turn on **Dependabot alerts** + **Dependabot security updates**.
-2. Optionally pick **cme-markdown-gap-analysis**.
+1. Optionally pick **cme-markdown-gap-analysis**.
+2. Confirm Dependabot alerts + security updates in GitHub Settings if not already on after org transfer.

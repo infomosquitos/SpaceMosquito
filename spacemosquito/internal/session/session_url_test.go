@@ -88,7 +88,7 @@ func TestStore_corruptCiphertext(t *testing.T) {
 		t.Fatal(err)
 	}
 	store := NewStore(tmpFile, nilSugar())
-	_, err := store.Load(testKey)
+	_, err := store.GetForURL(testKey, "https://example.atlassian.net")
 	if err == nil {
 		t.Fatal("expected error loading corrupt ciphertext")
 	}
@@ -102,7 +102,7 @@ func TestStore_nestedPath(t *testing.T) {
 		Cookies:       []Cookie{{Name: "t", Value: "v", Domain: ".example.com"}},
 		CapturedAt:    time.Now(),
 	}
-	if err := store.Save(sess, testKey); err != nil {
+	if err := store.Upsert(sess, testKey); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(tmpFile); err != nil {

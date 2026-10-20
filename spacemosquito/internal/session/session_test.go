@@ -1,6 +1,8 @@
 package session
 
 import (
+	"encoding/json"
+	"errors"
 	"os"
 	"testing"
 	"time"
@@ -37,17 +39,17 @@ func TestStore_RoundTrip(t *testing.T) {
 		CapturedAt: time.Now(),
 	}
 
-	if err := store.Save(sess, testKey); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if err := store.Upsert(sess, testKey); err != nil {
+		t.Fatalf("Upsert failed: %v", err)
 	}
 
 	if !store.HasSession() {
 		t.Fatal("expected session file after save")
 	}
 
-	loaded, err := store.Load(testKey)
+	loaded, err := store.GetForURL(testKey, sess.ConfluenceURL)
 	if err != nil {
-		t.Fatalf("Load failed: %v", err)
+		t.Fatalf("GetForURL failed: %v", err)
 	}
 
 	if loaded.ConfluenceURL != sess.ConfluenceURL {
@@ -76,11 +78,11 @@ func TestStore_WrongKey(t *testing.T) {
 		CapturedAt:    time.Now(),
 	}
 
-	if err := store.Save(sess, testKey); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if err := store.Upsert(sess, testKey); err != nil {
+		t.Fatalf("Upsert failed: %v", err)
 	}
 
-	_, err := store.Load(wrongKey)
+	_, err := store.GetForURL(wrongKey, sess.ConfluenceURL)
 	if err == nil {
 		t.Fatal("expected error with wrong key, got nil")
 	}
@@ -96,8 +98,8 @@ func TestStore_Delete(t *testing.T) {
 		CapturedAt:    time.Now(),
 	}
 
-	if err := store.Save(sess, testKey); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if err := store.Upsert(sess, testKey); err != nil {
+		t.Fatalf("Upsert failed: %v", err)
 	}
 
 	if err := store.Delete(); err != nil {
@@ -105,7 +107,7 @@ func TestStore_Delete(t *testing.T) {
 	}
 
 	// Delete truncates the file (Docker volume compatibility); file may still exist.
-	_, err := store.Load(testKey)
+	_, err := store.GetForURL(testKey, sess.ConfluenceURL)
 	if err == nil {
 		t.Fatal("expected error loading session after delete")
 	}
@@ -122,7 +124,7 @@ func TestStore_MissingFile(t *testing.T) {
 		t.Fatal("expected no session for missing file")
 	}
 
-	_, err := store.Load("any-key")
+	_, err := store.GetForURL("any-key", "https://example.atlassian.net")
 	if err == nil {
 		t.Fatal("expected error loading missing file")
 	}
@@ -138,12 +140,12 @@ func TestStore_EmptyKey(t *testing.T) {
 		CapturedAt:    time.Now(),
 	}
 
-	err := store.Save(sess, "")
+	err := store.Upsert(sess, "")
 	if err == nil {
 		t.Fatal("expected error with empty key")
 	}
 
-	_, err = store.Load("")
+	_, err = store.GetForURL("", sess.ConfluenceURL)
 	if err == nil {
 		t.Fatal("expected error loading with empty key")
 	}
@@ -209,8 +211,8 @@ func TestStore_FilePermissions(t *testing.T) {
 		CapturedAt:    time.Now(),
 	}
 
-	if err := store.Save(sess, testKey); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if err := store.Upsert(sess, testKey); err != nil {
+		t.Fatalf("Upsert failed: %v", err)
 	}
 
 	info, err := os.Stat(tmpFile)
@@ -235,13 +237,13 @@ func TestStore_KeyTruncation(t *testing.T) {
 		CapturedAt:    time.Now(),
 	}
 
-	if err := store.Save(sess, longKey); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if err := store.Upsert(sess, longKey); err != nil {
+		t.Fatalf("Upsert failed: %v", err)
 	}
 
-	loaded, err := store.Load(longKey)
+	loaded, err := store.GetForURL(longKey, sess.ConfluenceURL)
 	if err != nil {
-		t.Fatalf("Load failed: %v", err)
+		t.Fatalf("GetForURL failed: %v", err)
 	}
 
 	if loaded.ConfluenceURL != sess.ConfluenceURL {
@@ -260,16 +262,50 @@ func TestStore_KeyPadding(t *testing.T) {
 		CapturedAt:    time.Now(),
 	}
 
-	if err := store.Save(sess, shortKey); err != nil {
-		t.Fatalf("Save failed: %v", err)
+	if err := store.Upsert(sess, shortKey); err != nil {
+		t.Fatalf("Upsert failed: %v", err)
 	}
 
-	loaded, err := store.Load(shortKey)
+	loaded, err := store.GetForURL(shortKey, sess.ConfluenceURL)
 	if err != nil {
-		t.Fatalf("Load failed: %v", err)
+		t.Fatalf("GetForURL failed: %v", err)
 	}
 
 	if loaded.ConfluenceURL != sess.ConfluenceURL {
 		t.Errorf("expected URL %q, got %q", sess.ConfluenceURL, loaded.ConfluenceURL)
+	}
+}
+
+func TestStore_RejectsLegacySingleSession(t *testing.T) {
+	tmpFile := t.TempDir() + "/session.enc"
+	store := NewStore(tmpFile, nilSugar())
+
+	// Not a {version, sessions} blob — should be rejected.
+	legacy := &Session{
+		ConfluenceURL: "https://legacy.example.com/wiki/spaces/L",
+		Cookies:       []Cookie{{Name: "t", Value: "legacy"}},
+		CapturedAt:    time.Now(),
+	}
+	raw, err := json.Marshal(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := store.encryptWrite(raw, testKey); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = store.GetForURL(testKey, "https://legacy.example.com/display/X")
+	if !errors.Is(err, ErrUnsupportedSessionFormat) {
+		t.Fatalf("want ErrUnsupportedSessionFormat, got %v", err)
+	}
+
+	// Upsert must not wipe an unreadable legacy blob.
+	err = store.Upsert(&Session{
+		ConfluenceURL: "https://other.example.com/x",
+		Cookies:       []Cookie{{Name: "t", Value: "new"}},
+		CapturedAt:    time.Now(),
+	}, testKey)
+	if !errors.Is(err, ErrUnsupportedSessionFormat) {
+		t.Fatalf("Upsert want ErrUnsupportedSessionFormat, got %v", err)
 	}
 }

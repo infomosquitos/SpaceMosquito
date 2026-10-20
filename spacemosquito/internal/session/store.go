@@ -20,12 +20,17 @@ const storeVersion = 2
 // ErrNoSessionForHost is returned when no session is stored for a hostname.
 var ErrNoSessionForHost = errors.New("no session stored for host")
 
+// ErrUnsupportedSessionFormat is returned when session.enc is not a recognized multi-session blob.
+var ErrUnsupportedSessionFormat = errors.New(
+	"unsupported session.enc format; delete the session and re-capture",
+)
+
 type Store struct {
 	filePath string
 	log      logging.Sugar
 }
 
-// sessionBlob is the encrypted on-disk format (version 2): one map of hostname → session.
+// sessionBlob is the plaintext JSON shape inside session.enc: hostname → session.
 type sessionBlob struct {
 	Version  int                 `json:"version"`
 	Sessions map[string]*Session `json:"sessions"`
@@ -122,11 +127,6 @@ func (s *Store) Upsert(sess *Session, key string) error {
 	return nil
 }
 
-// Save upserts a session (legacy name). Prefer Upsert.
-func (s *Store) Save(rawSession *Session, key string) error {
-	return s.Upsert(rawSession, key)
-}
-
 // GetForURL returns the session for the hostname of rawURL.
 func (s *Store) GetForURL(key, rawURL string) (*Session, error) {
 	host := HostnameKey(rawURL)
@@ -161,25 +161,6 @@ func (s *Store) Count(key string) int {
 		return 0
 	}
 	return len(blob.Sessions)
-}
-
-// Load returns the only session if exactly one is stored (legacy single-site callers).
-// Prefer GetForURL / GetForHostname when a URL is known.
-func (s *Store) Load(key string) (*Session, error) {
-	blob, err := s.loadBlob(key)
-	if err != nil {
-		return nil, err
-	}
-	switch len(blob.Sessions) {
-	case 0:
-		return nil, fmt.Errorf("no sessions stored")
-	case 1:
-		for _, sess := range blob.Sessions {
-			sess.SetLogger(s.log)
-			return sess, nil
-		}
-	}
-	return nil, fmt.Errorf("multiple sessions stored (%d); use GetForURL with a confluence URL", len(blob.Sessions))
 }
 
 func (s *Store) Delete() error {
@@ -237,26 +218,12 @@ func (s *Store) loadBlob(key string) (*sessionBlob, error) {
 		return &blob, nil
 	}
 
-	// Legacy: single Session object.
-	var sess Session
-	if err := json.Unmarshal(plain, &sess); err != nil {
-		if s.log.Enabled() {
-			s.log.Errorw("session load failed: unmarshal error", "error", err)
-		}
-		return nil, fmt.Errorf("failed to unmarshal session: %w", err)
-	}
-	host := HostnameKey(sess.ConfluenceURL)
-	if host == "" {
-		host = "unknown"
-	}
 	if s.log.Enabled() {
-		s.log.Infow("migrating legacy single-session file to multi-session blob",
-			"host", host, "path", s.filePath)
+		s.log.Errorw("session load failed: unsupported on-disk format",
+			"path", s.filePath,
+			"hint", "delete session.enc and re-capture")
 	}
-	return &sessionBlob{
-		Version:  storeVersion,
-		Sessions: map[string]*Session{host: &sess},
-	}, nil
+	return nil, ErrUnsupportedSessionFormat
 }
 
 func (s *Store) saveBlob(blob *sessionBlob, key string) error {
