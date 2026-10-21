@@ -24,6 +24,12 @@ Detail lives in `dev/tasks/<task-id>.md` when needed (no `task-` filename prefix
 
 ---
 
+## upgrade-extensions-typescript-7
+- status: done
+- goal: Make chrome/firefox extension builds work on TypeScript 7 (same as ticketmosquito: esbuild + tsc --noEmit; drop webpack/ts-loader).
+- done_when: Both extensions `npm ci && npm run build` on typescript@7; Extension Build CI green; no ~5.9 pin; CHANGELOG/docs.
+- notes: Done — esbuild + typescript@7. [`tasks/upgrade-extensions-typescript-7.md`](tasks/upgrade-extensions-typescript-7.md).
+
 ## deps-vuln-automation
 - status: done
 - goal: Automate vuln detection/updates for npm extensions + Go (Dependabot security updates; CI warn-only audit/govulncheck).

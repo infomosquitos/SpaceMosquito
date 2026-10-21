@@ -38,4 +38,4 @@ Enable **Dependabot alerts** + **Dependabot security updates** in GitHub
 - [x] CI warn-only scans for Go + npm
 - [x] Maintainer note
 - [x] `dependabot.yml` monthly version updates
-- [ ] Dependabot alerts + security updates toggled on in GitHub UI (operator)
+- [x] Dependabot alerts + security updates toggled on in GitHub UI (operator)

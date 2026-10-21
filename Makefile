@@ -17,15 +17,16 @@ migrate-down:
 
 lint:
 	cd spacemosquito && go vet ./...
-	cd firefox-extension && npx tsc --noEmit
+	cd firefox-extension && npm run typecheck
+	cd chrome-extension && npm run typecheck
 
 dev-extension:
 	cd firefox-extension && npx web-ext run --source-dir ./dist --target firefox
 
 build-extensions:
 	./scripts/render-extension-icons.sh
-	cd firefox-extension && npm install && npx webpack --mode production
-	cd chrome-extension && npm install && npx webpack --mode production
+	cd firefox-extension && npm ci && npm run build
+	cd chrome-extension && npm ci && npm run build
 
 clean:
 	rm -f spacemosquito/spacemosquito

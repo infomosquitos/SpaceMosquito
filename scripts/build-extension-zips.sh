@@ -69,7 +69,7 @@ build_chrome() {
   (
     cd "$dir"
     npm ci
-    npx webpack --mode production
+    npm run build
   )
   rm -f "$zip_path"
   ( cd "$dir/dist" && zip -r "$zip_path" . )
@@ -90,7 +90,7 @@ build_firefox_xpi() {
   (
     cd "$dir"
     npm ci
-    npx webpack --mode production
+    npm run build
   )
 
   if [[ -z "${AMO_JWT_ISSUER:-}" || -z "${AMO_JWT_SECRET:-}" ]]; then
@@ -108,7 +108,7 @@ build_firefox_xpi() {
   source_base="$(mktemp "${TMPDIR:-/tmp}/sm-ff-source.XXXXXX")"
   rm -f "$source_base"
   source_zip="${source_base}.zip"
-  # Human-readable sources for AMO (webpack production output is minified).
+  # Human-readable sources for AMO (production bundle is minified).
   (
     cd "$dir"
     zip -r "$source_zip" . \

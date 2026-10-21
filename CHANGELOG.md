@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - HTTP request start/complete logs are **debug** (was info) to reduce spam.
 - **Breaking:** `GET /api/session/status` requires `?url=`; `POST /api/session/validate` requires `confluence_url`. Unknown `session.enc` payloads are rejected (delete the session and re-capture).
+- Browser extensions build with **TypeScript 7** + **esbuild** (`tsc --noEmit` then bundle); webpack/`ts-loader` removed.
 
 ## [0.6.0] - 2026-09-24
 

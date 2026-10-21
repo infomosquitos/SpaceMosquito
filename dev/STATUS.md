@@ -1,10 +1,10 @@
 # Status
 
-Last updated: 2026-10-20
+Last updated: 2026-10-21
 
 ## Current focus
 
-_None._ Next optional: **cme-markdown-gap-analysis**.
+**upgrade-extensions-typescript-7** done (esbuild + TypeScript 7).
 
 ## Active task
 

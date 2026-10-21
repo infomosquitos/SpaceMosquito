@@ -1,21 +1,21 @@
 {
   "name": "spacemosquito-extension",
   "version": "0.6.0",
+  "engines": {
+    "node": ">=16.20.0"
+  },
   "scripts": {
-    "build": "webpack --mode production",
-    "dev": "webpack --mode development",
-    "dev:watch": "webpack --mode development --watch"
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && node esbuild.mjs",
+    "dev": "node esbuild.mjs --dev --watch"
   },
   "dependencies": {
     "webextension-polyfill": "^0.12.0"
   },
   "devDependencies": {
-    "@types/chrome": "^0.0.270",
+    "@types/chrome": "^0.3.5",
     "@types/webextension-polyfill": "^0.12.5",
-    "copy-webpack-plugin": "^12.0.0",
-    "ts-loader": "^9.5.1",
-    "typescript": "~5.9.3",
-    "webpack": "^5.92.0",
-    "webpack-cli": "^5.1.4"
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
   }
 }
