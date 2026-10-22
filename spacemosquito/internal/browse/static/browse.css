@@ -43,7 +43,9 @@ button:hover { background: #8882; }
 ul.sm-tree, ul.sm-tree ul { list-style: none; margin: 0; padding-left: 18px; }
 ul.sm-tree { padding-left: 0; }
 ul.sm-tree li { margin: 2px 0; }
-ul.sm-tree li.sm-leaf { padding-left: 22px; }
+/* Pages without children get a dot in the arrow's place. */
+ul.sm-tree li.sm-leaf { display: flex; }
+ul.sm-tree li.sm-leaf::before { content: "\2022"; flex: none; width: 20px; margin-right: 2px; text-align: center; opacity: .4; }
 ul.sm-tree summary { cursor: pointer; list-style: none; }
 ul.sm-tree summary::-webkit-details-marker { display: none; }
 ul.sm-tree summary::before { content: "\25B6"; display: inline-block; width: 20px; height: 20px; line-height: 20px; margin-right: 2px; font-size: 10px; text-align: center; vertical-align: 1px; border-radius: 4px; opacity: .6; transition: transform .15s; }
@@ -61,7 +63,7 @@ body.sm-page { display: grid; grid-template-columns: 300px minmax(0, 1fr); }
 #sm-nav .sm-tools button { padding: 2px 8px; }
 #sm-nav ul.sm-tree ul { padding-left: 14px; }
 #sm-nav ul.sm-tree li { margin: 1px 0; }
-#sm-nav ul.sm-tree li.sm-leaf { padding-left: 20px; }
+#sm-nav ul.sm-tree li.sm-leaf::before { width: 18px; }
 #sm-nav ul.sm-tree summary::before { width: 18px; height: 18px; line-height: 18px; font-size: 9px; }
 #sm-nav a { text-decoration: none; }
 #sm-nav a:hover { text-decoration: underline; }
