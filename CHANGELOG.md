@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-10-22
+
 ### Fixed
 - Confluence pages without content of their own (typically parents that only group other pages) are saved as empty pages; their `index.html` lists the child pages. Previously they fell back to the headless browser, which saved Jira's "Oops, you've found a dead link" page instead.
 - "View in Confluence" links and saved `confluence_url` on Confluence Cloud include `/wiki` (they led to a 404).
