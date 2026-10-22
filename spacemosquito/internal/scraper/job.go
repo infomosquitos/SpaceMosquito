@@ -354,6 +354,9 @@ func (r *CrawlRunner) Run(ctx context.Context, job *CrawlJob) error {
 	persistCtx := context.Background()
 	persistDiscoveryPagesTotal(persistCtx, r.manager.db, pageInfo.SpaceKey, pageInfo.SpaceName, job.SpaceURL, job.TotalPages, r.log)
 
+	index := scraper.startCatalogIndex(pageInfo.SpaceKey)
+	defer index.finish()
+
 	for i := 0; i < len(pageInfo.Pages); i++ {
 		select {
 		case <-ctx.Done():
@@ -430,6 +433,7 @@ func (r *CrawlRunner) Run(ctx context.Context, job *CrawlJob) error {
 		}
 		job.UpdatedAt = time.Now()
 		r.manager.mu.Unlock()
+		index.pageSaved()
 
 		if r.log.Enabled() {
 			r.log.Infow("page crawled",

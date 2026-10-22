@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Crawls started from the extension now write the space's page tree when they start, refresh it as pages are saved, and update it when they finish or are stopped, so 📖 appears during the crawl. Previously only CLI and scheduled crawls updated the tree, and a first crawl of a space showed no 📖.
+
 ## [0.7.4] - 2026-10-22
 
 ### Changed
