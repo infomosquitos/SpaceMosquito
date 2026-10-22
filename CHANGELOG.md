@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-22
+
 ### Added
 - Homebrew install on macOS: `brew install --cask infomosquitos/tap/spacemosquito`.
 - Offline catalog navigation: `saved/index.html` lists spaces, each space gets an `index.html` page tree with a title filter (plus `index.md` versions), and pages link back to their space. Built after each crawl and by `reindex --content`.

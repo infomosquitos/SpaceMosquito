@@ -36,6 +36,16 @@ cd spacemosquito
 ls dist/
 ```
 
+## Browser extensions build
+
+Each extension (`firefox-extension/`, `chrome-extension/`) builds on its own — config is duplicated, no shared build package:
+
+```
+npm run build  →  tsc --noEmit (TypeScript 7, typecheck only)  &&  node esbuild.mjs (bundles background + popup)
+```
+
+Node `>=16.20.0` (`engines`); CI uses Node 22. Dependabot may bump TypeScript majors — the `Extension Build` CI workflow is the gate.
+
 ## Run unit tests
 
 ```sh
