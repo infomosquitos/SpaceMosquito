@@ -4,7 +4,7 @@ Last updated: 2026-10-22
 
 ## Current focus
 
-Release **v0.8.1** (attachments, Confluence authorship, wide tables, ADF decisions).
+Release **v0.8.2** (update notice; v0.8.1: attachments, Confluence authorship, wide tables, ADF decisions).
 
 ## Active task
 
