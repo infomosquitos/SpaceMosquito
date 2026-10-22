@@ -131,3 +131,21 @@ func TestTaskList_checkboxes(t *testing.T) {
 		}
 	}
 }
+
+// On Confluence Cloud Jira is on the same site, so keys and queries link.
+func TestJira_cloudLinks(t *testing.T) {
+	cloud := &RenderContext{BaseURL: "https://acme.atlassian.net", Cloud: true}
+	got, _ := convert(t, `<p><ac:structured-macro ac:name="jira"><ac:parameter ac:name="key">CCP-658</ac:parameter><ac:parameter ac:name="serverId">8b67</ac:parameter></ac:structured-macro></p>`, cloud)
+	if want := "**JIRA:** [CCP-658](https://acme.atlassian.net/browse/CCP-658)"; strings.TrimSpace(got) != want {
+		t.Errorf("key: got %q, want %q", strings.TrimSpace(got), want)
+	}
+	got, _ = convert(t, `<ac:structured-macro ac:name="jira"><ac:parameter ac:name="jqlQuery">labels = "W07"</ac:parameter></ac:structured-macro>`, cloud)
+	if want := `**JIRA:** [labels = "W07"](https://acme.atlassian.net/issues/?jql=labels+%3D+%22W07%22)`; strings.TrimSpace(got) != want {
+		t.Errorf("jql: got %q, want %q", strings.TrimSpace(got), want)
+	}
+	// Server/DC: the Jira URL is unknown, the key stays text.
+	server := &RenderContext{BaseURL: "https://wiki.example.net"}
+	if got, _ := convert(t, `<p><ac:structured-macro ac:name="jira"><ac:parameter ac:name="key">PROJ-1</ac:parameter></ac:structured-macro></p>`, server); strings.TrimSpace(got) != "**JIRA:** PROJ-1" {
+		t.Errorf("server: %q", got)
+	}
+}

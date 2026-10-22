@@ -2,12 +2,66 @@ package contentmd
 
 import (
 	"encoding/json"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"regexp"
+	"strconv"
 	"strings"
 
+	"github.com/vkh/spacemosquito/internal/confluence"
 	"github.com/vkh/spacemosquito/internal/contentmd/csf"
 )
+
+// pageRenderContext rebuilds the converter context a crawl had, from
+// metadata.json: the site (Jira links on Cloud, attachment URLs), the page ID
+// and the page's file attachments, so offline reindex keeps their links.
+func pageRenderContext(dir string) *csf.RenderContext {
+	ctx := &csf.RenderContext{}
+	b, err := os.ReadFile(filepath.Join(dir, "metadata.json"))
+	if err != nil {
+		return ctx
+	}
+	var meta struct {
+		ConfluenceURL string `json:"confluence_url"`
+		Attachments   []struct {
+			OriginalURL string `json:"original_url"`
+			LocalPath   string `json:"local_path"`
+			Name        string `json:"name"`
+			Size        int64  `json:"size"`
+		} `json:"attachments"`
+	}
+	if json.Unmarshal(b, &meta) != nil {
+		return ctx
+	}
+	ctx.BaseURL = confluence.BaseURL(meta.ConfluenceURL)
+	if u, err := url.Parse(meta.ConfluenceURL); err == nil {
+		ctx.Cloud = strings.HasSuffix(u.Hostname(), ".atlassian.net") || strings.HasPrefix(u.Path, "/wiki/")
+		if m := pageIDPath.FindStringSubmatch(u.Path); m != nil {
+			ctx.PageID, _ = strconv.Atoi(m[1])
+		}
+	}
+	for _, a := range meta.Attachments {
+		if a.Name == "" {
+			continue // image/HTML-extraction refs, not file attachments
+		}
+		href := a.OriginalURL
+		if a.LocalPath != "" {
+			href = "assets/attachments/" + url.PathEscape(path.Base(filepath.ToSlash(a.LocalPath)))
+		}
+		if href == "" {
+			continue
+		}
+		if ctx.Files == nil {
+			ctx.Files = map[string]csf.FileLink{}
+		}
+		ctx.Files[a.Name] = csf.FileLink{Href: href, Size: a.Size}
+	}
+	return ctx
+}
+
+var pageIDPath = regexp.MustCompile(`/pages/(\d+)`)
 
 // RenderDirMarkdown converts a saved page directory to Markdown, routing by
 // source format (see DetectBodyFormat):
@@ -30,7 +84,7 @@ func RenderDirMarkdown(dir string) (md, skipReason string, err error) {
 			}
 			return "", "", err
 		}
-		out, _, err := csf.CSFToMarkdown(string(raw), nil)
+		out, _, err := csf.CSFToMarkdown(string(raw), pageRenderContext(dir))
 		if err != nil {
 			return "", "", err
 		}

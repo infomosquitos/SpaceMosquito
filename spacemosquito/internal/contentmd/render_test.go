@@ -94,3 +94,27 @@ func TestRenderDirMarkdown_legacyStorageSniffed(t *testing.T) {
 		t.Fatalf("legacy storage not routed to CSF: %q", md)
 	}
 }
+
+// Offline reindex rebuilds the crawl's converter context from metadata.json,
+// so attachment links and Jira links survive it.
+func TestRenderDirMarkdown_contextFromMetadata(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "metadata.json", `{"title":"P","confluence_url":"https://acme.atlassian.net/wiki/spaces/S/pages/42/P","body_format":"storage",`+
+		`"attachments":[{"original_url":"https://acme.atlassian.net/wiki/download/attachments/42/Deck%201.pptx","local_path":"assets/attachments/Deck 1.pptx","name":"Deck 1.pptx","size":10},`+
+		`{"original_url":"https://acme.atlassian.net/wiki/download/attachments/42/Big.zip","local_path":"","name":"Big.zip","size":99}]}`)
+	writeFile(t, dir, "raw.html", `<ac:structured-macro ac:name="view-file"><ac:parameter ac:name="name"><ri:attachment ri:filename="Deck 1.pptx" /></ac:parameter></ac:structured-macro>`+
+		`<p>See <ac:link><ri:attachment ri:filename="Big.zip" /></ac:link> and <ac:structured-macro ac:name="jira"><ac:parameter ac:name="key">CCP-1</ac:parameter></ac:structured-macro></p>`)
+	md, skip, err := contentmd.RenderDirMarkdown(dir)
+	if err != nil || skip != "" {
+		t.Fatalf("skip=%q err=%v", skip, err)
+	}
+	for _, want := range []string{
+		`📎 [Deck 1.pptx](<assets/attachments/Deck%201.pptx> "attachment")`,
+		`[Big.zip](<https://acme.atlassian.net/wiki/download/attachments/42/Big.zip>)`,
+		`[CCP-1](https://acme.atlassian.net/browse/CCP-1)`,
+	} {
+		if !strings.Contains(md, want) {
+			t.Errorf("missing %q in:\n%s", want, md)
+		}
+	}
+}

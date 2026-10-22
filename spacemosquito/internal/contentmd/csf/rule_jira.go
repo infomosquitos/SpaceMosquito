@@ -1,11 +1,18 @@
 package csf
 
-import "github.com/PuerkitoBio/goquery"
+import (
+	"net/url"
+	"strings"
 
-// jiraRule renders the jira macro minimally: the issue key as a bold ref. We
-// cannot resolve the JIRA base URL from the macro (it carries a server display
-// name / UUID, not a URL), so no link is emitted. Key-less jira macros (JQL
-// tables) render nothing. server/columns params are dropped.
+	"github.com/PuerkitoBio/goquery"
+)
+
+// jiraRule renders the jira macro: an issue key as a bold ref, or a JQL query
+// (issue table). The macro carries a server name / UUID, not a URL; on
+// Confluence Cloud Jira lives on the same site, so keys link to
+// <site>/browse/KEY and queries to <site>/issues/?jql=…. On Server/DC the
+// Jira URL is unknown: keys stay text and query tables are dropped.
+// server/columns params are dropped.
 type jiraRule struct{}
 
 func (jiraRule) Name() string { return "jira" }
@@ -14,10 +21,19 @@ func (jiraRule) Match(sel *goquery.Selection) bool {
 	return tagName(sel) == "ac:structured-macro" && macroName(sel) == "jira"
 }
 
-func (jiraRule) Render(sel *goquery.Selection, _ *RenderContext) (string, error) {
-	key := macroParam(sel, "key")
-	if key == "" {
-		return "", nil
+func (jiraRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, error) {
+	site := ""
+	if ctx != nil && ctx.Cloud && ctx.BaseURL != "" {
+		site = strings.TrimSuffix(ctx.BaseURL, "/")
 	}
-	return "**JIRA:** " + key, nil
+	if key := macroParam(sel, "key"); key != "" {
+		if site == "" {
+			return "**JIRA:** " + key, nil
+		}
+		return "**JIRA:** [" + key + "](" + site + "/browse/" + url.PathEscape(key) + ")", nil
+	}
+	if jql := macroParam(sel, "jqlQuery"); jql != "" && site != "" {
+		return "**JIRA:** [" + escapeLinkText(jql) + "](" + site + "/issues/?jql=" + url.QueryEscape(jql) + ")", nil
+	}
+	return "", nil
 }
