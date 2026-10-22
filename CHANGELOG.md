@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Decision lists show as one light green box (dark green in dark mode), each decision on its own line, like Confluence's decision panel.
 
 ### Fixed
+- Content of Info/Note/Warning panels, lists and tables no longer slips out of its block after an empty paragraph (Confluence writes `<p />`, which HTML parsing left open); some previously missing sections reappear.
+- Images placed as their own block, and block/embed link cards, stay on separate lines instead of running together; image captions are shown below the image.
 - Status labels are shown in capitals as in Confluence (`MODERATE`); titles typed in mixed case ("moderATE") no longer show through.
 
 ## [0.8.4] - 2026-10-22

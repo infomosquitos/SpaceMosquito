@@ -139,3 +139,50 @@ func TestRegistry_firstMatchWins(t *testing.T) {
 		}
 	}
 }
+
+// Storage Format writes empty paragraphs as <p … />; parsed as HTML they
+// stayed open and pushed a following panel's text out of the panel.
+func TestSelfClosingParagraphKeepsPanelContent(t *testing.T) {
+	in := `<hr /><p local-id="a" /><ac:structured-macro ac:name="info"><ac:rich-text-body><p local-id="b">Setup for <strong>SAP</strong>.</p></ac:rich-text-body></ac:structured-macro><p local-id="c" /><p>After.</p>`
+	got, _, err := CSFToMarkdown(in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(got, "> **Info:**\n>\n> Setup for **SAP**.") {
+		t.Fatalf("panel text outside the panel:\n%s", got)
+	}
+	if !strings.Contains(got, "\n\nAfter.") || strings.Contains(got, "> After.") {
+		t.Fatalf("text after the panel:\n%s", got)
+	}
+}
+
+func TestExpandSelfClosing(t *testing.T) {
+	in := `<p local-id="x" /><th/><br/><hr /><ri:attachment ri:filename="a.png" /><ac:emoticon ac:name="tick" />`
+	want := `<p local-id="x"></p><th></th><br/><hr /><ri:attachment ri:filename="a.png" /><ac:emoticon ac:name="tick" />`
+	if got := expandSelfClosing(in); got != want {
+		t.Fatalf("got  %s\nwant %s", got, want)
+	}
+}
+
+// Block images and link cards separated only by empty paragraphs stay on
+// their own lines; image captions are kept.
+func TestBlockImagesCardsAndCaptions(t *testing.T) {
+	in := `<p>Head</p><ac:image ac:layout="center" ac:alt="a.png"><ri:attachment ri:filename="a.png" /></ac:image><p /><ac:image ac:layout="center" ac:alt="b.png"><ri:attachment ri:filename="b.png" /><ac:caption><p>Mobile layout, expanded</p></ac:caption></ac:image><p />` +
+		`<a href="https://x/browse/C-1" data-card-appearance="embed">https://x/browse/C-1</a><p> </p><p /><a href="https://x/issues" data-card-appearance="block">https://x/issues</a>` +
+		`<p>Inline <ac:image ac:alt="c.png"><ri:attachment ri:filename="c.png" /></ac:image> image</p>` +
+		`<table><tbody><tr><td><ac:image ac:alt="d.png"><ri:attachment ri:filename="d.png" /></ac:image></td><td>x</td></tr></tbody></table>`
+	got, _, err := CSFToMarkdown(in, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"![a.png](assets/images/a.png)\n\n![b.png](assets/images/b.png)\n\n*Mobile layout, expanded*",
+		"[https://x/browse/C-1](https://x/browse/C-1)\n\n[https://x/issues](https://x/issues)",
+		"Inline ![c.png](assets/images/c.png) image",
+		"| ![d.png](assets/images/d.png) | x |",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+}

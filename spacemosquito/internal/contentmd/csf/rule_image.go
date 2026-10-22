@@ -25,7 +25,7 @@ func (imageRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, err
 	// External image: <ri:url ri:value="https://…"/>
 	if u := findDescendant(sel, "ri:url"); u != nil {
 		if v := strings.TrimSpace(u.AttrOr("ri:value", "")); v != "" {
-			return fmt.Sprintf("![%s](%s)", alt, v), nil
+			return placeImage(sel, ctx, fmt.Sprintf("![%s](%s)", alt, v)), nil
 		}
 	}
 
@@ -44,7 +44,34 @@ func (imageRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, err
 	if downloadURL != "" {
 		ctx.RequestAsset(AssetRequest{Kind: "image", Filename: local, URL: downloadURL})
 	}
-	return fmt.Sprintf("![%s](assets/images/%s)", alt, url.PathEscape(local)), nil
+	return placeImage(sel, ctx, fmt.Sprintf("![%s](assets/images/%s)", alt, url.PathEscape(local))), nil
+}
+
+// blockParents hold images placed as their own block (not inside a
+// paragraph); in table cells the line breaks collapse to spaces.
+var blockParents = map[string]bool{
+	"body": true, "ac:layout-cell": true, "ac:rich-text-body": true, "ac:adf-content": true,
+	"div": true, "blockquote": true, "td": true, "th": true,
+}
+
+// placeImage adds the image's caption (in italics) and, for an image placed
+// as its own block, paragraph breaks so neighbouring images do not run
+// together on one line.
+func placeImage(sel *goquery.Selection, ctx *RenderContext, img string) string {
+	caption := ""
+	if c := findDescendant(sel, "ac:caption"); c != nil {
+		caption = strings.Join(strings.Fields(ctx.RenderChildren(c)), " ")
+	}
+	if !blockParents[tagName(sel.Parent())] {
+		if caption != "" {
+			return img + " *" + caption + "*"
+		}
+		return img
+	}
+	if caption != "" {
+		img += "\n\n*" + caption + "*"
+	}
+	return "\n\n" + img + "\n\n"
 }
 
 // attachmentURL builds the download URL for a page attachment, flavor-aware.

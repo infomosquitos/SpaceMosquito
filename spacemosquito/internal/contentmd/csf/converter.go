@@ -24,6 +24,31 @@ func unwrapCDATA(s string) string {
 	})
 }
 
+// selfClosingHTML matches self-closing HTML elements (<p local-id="…" />).
+// Namespaced Confluence elements (ac:, ri:) are not matched.
+var selfClosingHTML = regexp.MustCompile(`<([a-zA-Z][a-zA-Z0-9]*)(\s[^<>]*?)?\s*/>`)
+
+// voidElements are HTML elements that have no content (<br/> is fine as is).
+var voidElements = map[string]bool{
+	"area": true, "base": true, "br": true, "col": true, "embed": true, "hr": true, "img": true,
+	"input": true, "link": true, "meta": true, "param": true, "source": true, "track": true, "wbr": true,
+}
+
+// expandSelfClosing writes self-closing non-void HTML elements as open+close
+// pairs. Storage Format is XML, where <p/> is an empty paragraph, but the
+// HTML parser ignores the slash: the paragraph stays open, swallows the
+// following macro, and the macro's own <p> then closes it, pushing the
+// macro's content out (an info panel rendered empty, its text after it).
+func expandSelfClosing(s string) string {
+	return selfClosingHTML.ReplaceAllStringFunc(s, func(m string) string {
+		sub := selfClosingHTML.FindStringSubmatch(m)
+		if voidElements[strings.ToLower(sub[1])] {
+			return m
+		}
+		return "<" + sub[1] + sub[2] + "></" + sub[1] + ">"
+	})
+}
+
 // CSFToMarkdown converts a Confluence Storage Format document into Markdown.
 // It returns the Markdown, any asset requests scheduled by rules (empty until
 // Phase 3), and an error only on unparseable input.
@@ -43,6 +68,7 @@ func CSFToMarkdown(storageXML string, ctx *RenderContext) (string, []AssetReques
 		return "", nil, nil
 	}
 	storageXML = unwrapCDATA(storageXML)
+	storageXML = expandSelfClosing(storageXML)
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(storageXML))
 	if err != nil {

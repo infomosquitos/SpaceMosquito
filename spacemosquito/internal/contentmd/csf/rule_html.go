@@ -113,6 +113,11 @@ func renderAnchor(sel *goquery.Selection, ctx *RenderContext) string {
 	if text == "" {
 		text = href
 	}
+	// Block and embed link cards stand on their own line in Confluence.
+	switch sel.AttrOr("data-card-appearance", "") {
+	case "block", "embed":
+		return "\n\n[" + text + "](" + href + ")\n\n"
+	}
 	return lead + "[" + text + "](" + href + ")" + trail
 }
 
