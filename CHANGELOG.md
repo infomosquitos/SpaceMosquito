@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-10-22
+
 ### Added
 - Content search in the browse pages: space and catalog indexes served at `http://localhost:56403/browse/` search page text (same full-text search as MCP) and highlight matches. REST `/api/search` returns `browse_url` per result and supports `highlight=1`.
 
