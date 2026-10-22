@@ -117,7 +117,9 @@ func TestWriteSpace(t *testing.T) {
 	for _, want := range []string{
 		`<title>Test Space (TST)</title>`,
 		`<a href="../index.html">← All spaces</a>`,
-		`<a href="10-Home/index.html">Home</a>`,
+		`<a href="10-Home/index.html">Home</a> <span class="count">(1)</span>`,
+		`id="expand-all"`,
+		`id="collapse-all"`,
 		`<a href="11-Data%20mapping%20iFlow%20%3E%20%5BCommerce%5D/index.html">Data mapping iFlow &gt; [Commerce]</a>`,
 		`2 pages`,
 		`<section id="content-search" class="hidden" data-space="TST">`,
@@ -143,6 +145,16 @@ func TestWriteSpace(t *testing.T) {
 	} {
 		if !strings.Contains(homeHTML, want) {
 			t.Errorf("container page index.html missing %q:\n%s", want, homeHTML)
+		}
+	}
+	treeJS := read(filepath.Join(spaceDir, catalogindex.TreeScriptFile))
+	for _, want := range []string{
+		`"key":"TST","title":"Test Space (TST)"`,
+		`{"t":"Home","d":"10-Home","c":[{"t":"Data mapping iFlow \u003e [Commerce]","d":"11-Data mapping iFlow \u003e [Commerce]"}]}`,
+		`getElementById("sm-nav")`,
+	} {
+		if !strings.Contains(treeJS, want) {
+			t.Errorf("tree.js missing %q:\n%s", want, treeJS)
 		}
 	}
 	rootHTML := read(filepath.Join(saved, "index.html"))

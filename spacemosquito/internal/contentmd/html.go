@@ -45,6 +45,8 @@ blockquote { margin: 0; padding: 0 16px; border-left: 4px solid #8886; }
 </style>
 </head>
 <body>
+<aside id="sm-nav" hidden></aside>
+<div class="sm-content">
 <header>
 <nav><a href="../index.html">← {{.SpaceKey}} index</a>{{if .SourceURL}} · <a href="{{.SourceURL}}">View in Confluence</a>{{end}}</nav>
 <h1>{{.Title}}</h1>
@@ -52,6 +54,8 @@ blockquote { margin: 0; padding: 0 16px; border-left: 4px solid #8886; }
 <main>
 {{.Body}}
 </main>
+</div>
+<script src="../tree.js"></script>
 </body>
 </html>
 `))
@@ -60,7 +64,8 @@ blockquote { margin: 0; padding: 0 16px; border-left: 4px solid #8886; }
 // used for Storage Format pages, whose raw body browsers cannot display;
 // content.md already links downloaded assets by relative path, so images and
 // diagrams show when index.html is opened from the page directory. The header
-// links to the space index one directory up (see internal/catalogindex).
+// links to the space index one directory up; ../tree.js (written with the
+// space index, see internal/catalogindex) adds the page tree sidebar.
 func MarkdownToHTML(spaceKey, title, sourceURL, markdown string) (string, error) {
 	var body bytes.Buffer
 	if strings.TrimSpace(markdown) == "" {

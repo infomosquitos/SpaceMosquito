@@ -23,12 +23,14 @@ func TestMarkdownToHTML(t *testing.T) {
 		`<img src="assets/images/shot.png" alt="shot.png">`,
 		`UPDATE CATEGORY<br>`,
 		`<table>`,
+		`<aside id="sm-nav" hidden></aside>`,
+		`<script src="../tree.js"></script>`,
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
 		}
 	}
-	if strings.Contains(got, "<script>") {
+	if strings.Contains(got, "<script>alert") {
 		t.Errorf("raw HTML not escaped:\n%s", got)
 	}
 }

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Confluence-style page tree sidebar on every saved page: the current page is highlighted and its parents expanded, with a title filter and expand/collapse all; on narrow windows it opens from a ☰ Pages button. Run `spacemosquito reindex --content` once to add it to pages saved by earlier versions (a normal crawl only rewrites changed pages).
+
+### Changed
+- Space page tree is easier to navigate: **Expand all** / **Collapse all** buttons, a larger ▶ toggle, child page counts next to parent pages, and the first level opens by default. Clearing the title filter returns to that default view.
+
 ## [0.7.5] - 2026-10-22
 
 ### Fixed

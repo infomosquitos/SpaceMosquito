@@ -1,7 +1,8 @@
 // Package catalogindex writes navigation files into the saved catalog so it
 // can be browsed offline: saved/index.{html,md} lists spaces, and
 // saved/<SPACE>/index.{html,md} holds the space's page tree (rebuilt from
-// parent_confluence_id in the DB). Page links are relative, so the catalog
+// parent_confluence_id in the DB), and saved/<SPACE>/tree.js renders the same
+// tree as a sidebar on every page. Page links are relative, so the catalog
 // stays browsable when moved.
 package catalogindex
 
@@ -105,6 +106,9 @@ func writeSpace(ctx context.Context, db store.Store, savedBase string, sp store.
 	tree := &Space{Key: sp.Key, Name: sp.Name, URL: sp.URL, LastCrawled: sp.LastCrawled}
 	tree.Roots, tree.Pages = BuildTree(pages, spaceDir)
 	if err := writePair(spaceDir, spaceTemplate, tree, renderSpaceMarkdown(tree)); err != nil {
+		return nil, err
+	}
+	if err := writeTreeScript(spaceDir, tree); err != nil {
 		return nil, err
 	}
 	if err := writeContainerPages(spaceDir, tree.Roots); err != nil {
@@ -317,8 +321,17 @@ input[type=search] { width: 100%; box-sizing: border-box; padding: 6px 10px; mar
 ul.tree, ul.tree ul { list-style: none; padding-left: 18px; margin: 0; }
 ul.tree { padding-left: 0; }
 ul.tree li { margin: 2px 0; }
-summary { cursor: pointer; }
-li.leaf { padding-left: 1.1em; }
+summary { cursor: pointer; list-style: none; }
+summary::-webkit-details-marker { display: none; }
+summary::before { content: "▶"; display: inline-block; width: 20px; height: 20px; line-height: 20px; margin-right: 2px; font-size: 10px; text-align: center; vertical-align: 1px; border-radius: 4px; opacity: .6; transition: transform .15s; }
+details[open] > summary::before { transform: rotate(90deg); }
+summary:hover::before { background: #8883; opacity: 1; }
+li.leaf { padding-left: 22px; }
+.count { font-size: 13px; opacity: .6; }
+.tree-tools { display: flex; gap: 8px; align-items: center; margin: 8px 0 16px; }
+.tree-tools input[type=search] { flex: 1; margin: 0; }
+.tree-tools button { font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid #8886; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; white-space: nowrap; }
+.tree-tools button:hover { background: #8882; }
 .hidden { display: none; }
 #content-search { margin-bottom: 16px; }
 #search-results { padding-left: 20px; margin: 0; }
@@ -420,27 +433,50 @@ var spaceTemplate = template.Must(template.New("space").Funcs(funcs).Parse(`<!do
 <p class="meta">{{.Pages}} pages{{crawled .LastCrawled}}</p>
 </header>
 {{template "search" .Key}}
+<div class="tree-tools">
 <input type="search" id="filter" placeholder="Filter pages by title…" aria-label="Filter pages by title" autofocus>
+<button type="button" id="expand-all" class="hidden" title="Show every page in the tree">Expand all</button>
+<button type="button" id="collapse-all" class="hidden" title="Show only top-level pages">Collapse all</button>
+</div>
 <ul class="tree" id="tree">
 {{template "nodes" .Roots}}
 </ul>
 <script>
 (function () {
   var input = document.getElementById("filter");
-  var items = Array.prototype.slice.call(document.querySelectorAll("#tree li"));
+  // Each item keeps the titles of itself and its descendants (not the counts).
+  var items = Array.prototype.slice.call(document.querySelectorAll("#tree li")).map(function (li) {
+    var titles = Array.prototype.map.call(li.querySelectorAll("a"), function (a) { return a.textContent; });
+    return { li: li, text: titles.join("\n").toLowerCase() };
+  });
+  var folders = Array.prototype.slice.call(document.querySelectorAll("#tree details"));
+  // Default view: top-level pages open, deeper levels collapsed.
+  function reset() {
+    folders.forEach(function (d) { d.open = d.parentElement.parentElement.id === "tree"; });
+  }
+  function setAll(open) {
+    folders.forEach(function (d) { d.open = open; });
+  }
+  if (folders.length > 0) {
+    ["expand-all", "collapse-all"].forEach(function (id, i) {
+      var b = document.getElementById(id);
+      b.classList.remove("hidden");
+      b.addEventListener("click", function () { setAll(i === 0); });
+    });
+  }
+  reset();
   input.addEventListener("input", function () {
     var q = input.value.trim().toLowerCase();
-    items.forEach(function (li) {
-      li.classList.toggle("hidden", q !== "" && li.textContent.toLowerCase().indexOf(q) < 0);
-      var d = li.querySelector(":scope > details");
-      if (d) d.open = q !== "";
+    items.forEach(function (it) {
+      it.li.classList.toggle("hidden", q !== "" && it.text.indexOf(q) < 0);
     });
+    if (q !== "") setAll(true); else reset();
   });
 })();
 </script>
 </body>
 </html>
-{{define "nodes"}}{{range .}}<li{{if not .Children}} class="leaf"{{end}}>{{if .Children}}<details><summary><a href="{{href .Dir "index.html"}}">{{.Title}}</a></summary><ul>
+{{define "nodes"}}{{range .}}<li{{if not .Children}} class="leaf"{{end}}>{{if .Children}}<details><summary><a href="{{href .Dir "index.html"}}">{{.Title}}</a> <span class="count">({{len .Children}})</span></summary><ul>
 {{template "nodes" .Children}}</ul></details>{{else}}<a href="{{href .Dir "index.html"}}">{{.Title}}</a>{{end}}</li>
 {{end}}{{end}}
 ` + searchSection))
