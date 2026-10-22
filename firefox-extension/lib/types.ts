@@ -55,6 +55,8 @@ export interface CrawlSpace {
   pages_rendered?: number;
   last_crawled?: string;
   created_at?: string;
+  /** Server path of the saved space page tree (e.g. /browse/KEY/); absent until generated. */
+  browse_path?: string;
 }
 
 export interface CronSpaceConfig {

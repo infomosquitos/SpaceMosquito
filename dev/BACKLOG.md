@@ -24,6 +24,12 @@ Detail lives in `dev/tasks/<task-id>.md` when needed (no `task-` filename prefix
 
 ---
 
+## extension-browse-space-link
+- status: done
+- parent: catalog-navigation-index
+- goal: Open a space's saved page tree from the extension Spaces tab.
+- done_when: `serve` serves the catalog at `/browse/` (no listings, no traversal); `/api/spaces` returns `browse_path`; both extensions show a 📖 button that opens it; tests green; docs updated.
+
 ## catalog-navigation-index
 - status: done
 - goal: Browse the saved catalog offline: root list of spaces and per-space page tree (HTML + Markdown), pages link back to the space index.

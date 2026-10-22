@@ -270,7 +270,7 @@ func TestCrawlHandler_validation(t *testing.T) {
 }
 
 func TestSpacesHandler_validation(t *testing.T) {
-	h := SpacesHandler(nil, testLogger(t))
+	h := SpacesHandler(nil, "", testLogger(t))
 
 	t.Run("POST invalid json", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/api/spaces", strings.NewReader("{"))

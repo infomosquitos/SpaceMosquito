@@ -12,17 +12,19 @@ import (
 )
 
 type spacesHandler struct {
-	log logging.Sugar
-	db  store.Store
+	log       logging.Sugar
+	db        store.Store
+	savedBase string
 }
 
 type addSpaceRequest struct {
 	URL string `json:"url"`
 }
 
-// SpacesHandler handles space management endpoints.
-func SpacesHandler(db store.Store, log logging.Sugar) http.HandlerFunc {
-	return (&spacesHandler{log: log, db: db}).handle
+// SpacesHandler handles space management endpoints. savedBase locates the
+// catalog so the list can report each space's browse_path.
+func SpacesHandler(db store.Store, savedBase string, log logging.Sugar) http.HandlerFunc {
+	return (&spacesHandler{log: log, db: db, savedBase: savedBase}).handle
 }
 
 func (h *spacesHandler) handle(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +73,7 @@ func (h *spacesHandler) list(w http.ResponseWriter, r *http.Request) {
 			"pages_rendered":  formats.Rendered,
 			"last_crawled":    lastCrawledStr,
 			"created_at":      s.CreatedAt.Format(time.RFC3339),
+			"browse_path":     SpaceBrowsePath(h.savedBase, s.Key),
 		})
 	}
 

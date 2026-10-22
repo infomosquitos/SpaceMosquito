@@ -150,7 +150,7 @@ function applyGating(): void {
   }
 
   document.querySelectorAll<HTMLButtonElement | HTMLSelectElement | HTMLInputElement>(
-    '#spaces-list .btn-icon, #spaces-list select, #spaces-list input[type="checkbox"]'
+    '#spaces-list .btn-icon:not(.btn-browse), #spaces-list select, #spaces-list input[type="checkbox"]'
   ).forEach((el) => {
     el.disabled = !allow;
   });
@@ -829,6 +829,7 @@ async function loadSpaces() {
           <span class="space-row-name" title="${space.space_url || ''}">${space.space_key}</span>
           <span class="space-row-counts"${countsTitle ? ` title="${countsTitle}"` : ''}>${formatCounts(space)}</span>
           <span class="space-row-date" title="${dateTitle}">${dateLabel}</span>
+          ${space.browse_path ? '<button type="button" class="btn-icon btn-browse" title="Browse saved pages">📖</button>' : '<span></span>'}
           <button type="button" class="btn-icon btn-play${running ? ' btn-stop' : ''}" title="${running ? 'Stop crawl' : 'Crawl'}" data-url="${space.space_url}">${running ? '⏹' : '▶'}</button>
           <button type="button" class="btn-icon btn-cron${cronEnabled.has(space.space_key) ? ' cron-on' : ''}" title="${cronEnabled.has(space.space_key) ? 'Cron enabled' : 'Cron disabled'}">⏱</button>
         </div>
@@ -861,6 +862,13 @@ async function loadSpaces() {
         } catch (error) {
           alert('Crawl failed: ' + (error as Error).message);
         }
+      });
+
+      row.querySelector('.btn-browse')?.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        // Served by the backend: browsers do not let extensions open file:// pages.
+        await chrome.tabs.create({ url: api.getBackendUrl() + space.browse_path });
+        window.close();
       });
 
       row.querySelector('.btn-cron')?.addEventListener('click', async (e) => {
