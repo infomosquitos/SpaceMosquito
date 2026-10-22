@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.6] - 2026-10-22
+
 ### Changed
 - Faster crawls: the pause before each image/attachment download is 2.5 s instead of 5 s, configurable as `storage.asset_delay_ms` (`-1` = no pause).
 
