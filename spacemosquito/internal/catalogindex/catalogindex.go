@@ -34,6 +34,7 @@ type Node struct {
 	Title    string
 	Dir      string // page directory name under the space directory
 	Empty    bool   // Storage Format page without content of its own
+	History  store.PageHistory
 	Children []*Node
 }
 
@@ -236,7 +237,7 @@ func BuildTree(pages []store.Page, spaceDir string) ([]*Node, int) {
 			title = dir
 		}
 		empty := p.BodyFormat == "storage" && strings.TrimSpace(p.Content) == ""
-		nodes[p.ConfluenceID] = &Node{Title: title, Dir: dir, Empty: empty}
+		nodes[p.ConfluenceID] = &Node{Title: title, Dir: dir, Empty: empty, History: p.History}
 		order = append(order, p.ConfluenceID)
 	}
 	parents := map[int]int{}

@@ -203,6 +203,18 @@
     document.addEventListener("click", function (e) { if (!box.contains(e.target)) close(); });
   });
 
+  // File previews in the page (view-file → link titled "attachment") show
+  // PDFs inline, as Confluence does; other files stay download links.
+  each('main a[title="attachment"]', null, function (a) {
+    var p = a.parentElement;
+    if (!/\.pdf$/i.test(a.getAttribute("href") || "") || !p || p.tagName !== "P" || p.querySelectorAll("a").length !== 1) return;
+    var frame = el("iframe", "sm-pdf");
+    frame.src = a.getAttribute("href");
+    frame.title = a.textContent;
+    frame.loading = "lazy";
+    p.parentNode.insertBefore(frame, p.nextSibling);
+  });
+
   // "/" focuses content search from anywhere on the page.
   document.addEventListener("keydown", function (e) {
     var t = e.target, typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);

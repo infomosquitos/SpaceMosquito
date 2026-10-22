@@ -156,7 +156,7 @@ func toolDefinitions() []Tool {
 	return []Tool{
 		{
 			Name:        "confluence_search",
-			Description: "Search Confluence pages using BM25/FTS lexical search. Results include confluence_id for use with confluence_get_page.",
+			Description: "Search Confluence pages using BM25/FTS lexical search. Results include confluence_id for use with confluence_get_page, and history.updated_by/updated_at (last Confluence update) when known.",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {
@@ -192,7 +192,7 @@ func toolDefinitions() []Tool {
 		},
 		{
 			Name:        "confluence_get_page",
-			Description: "Get a Confluence page by confluence_id (from search results or page URL). space_key is optional unless multiple spaces share the same ID.",
+			Description: "Get a Confluence page by confluence_id (from search results or page URL). space_key is optional unless multiple spaces share the same ID. history gives who created and last updated the page in Confluence, and when (if known); updated_at is the local save time.",
 			InputSchema: json.RawMessage(`{
 				"type": "object",
 				"properties": {

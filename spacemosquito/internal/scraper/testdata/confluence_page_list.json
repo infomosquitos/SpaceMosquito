@@ -4,7 +4,8 @@
       "id": "100000001",
       "type": "page",
       "title": "Getting Started",
-      "version": { "number": 11 },
+      "version": { "number": 11, "when": "2024-10-03T14:30:00.000Z", "by": { "displayName": "Bob" } },
+      "history": { "createdDate": "2022-03-12T09:00:00.000Z", "createdBy": { "displayName": "Ann" } },
       "_links": { "webui": "/spaces/DEMO/pages/100000001/Getting+Started" }
     },
     {

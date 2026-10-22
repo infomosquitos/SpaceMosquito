@@ -31,6 +31,7 @@ type AssetDownloader struct {
 	lastReq     time.Time
 	authHeaders map[string]string
 	force       bool
+	fileClient  *http.Client // attachments; nil = fileClient
 }
 
 // SetAuthHeaders sets the headers (e.g. the session Cookie) attached to every
@@ -102,6 +103,7 @@ func NewAssetDownloader(log logging.Sugar) *AssetDownloader {
 // so scraper integration tests can drive httptest without waiting.
 func (d *AssetDownloader) SetClientForTest(c *http.Client) {
 	d.client = c
+	d.fileClient = c
 	d.rateLimit = 0
 	d.retryDelay = time.Millisecond
 	d.maxRetries = 1
@@ -389,4 +391,75 @@ func (d *AssetDownloader) RewriteURL(rawURL, assetBase string) string {
 	}
 
 	return rawURL
+}
+
+// fileClient downloads page attachments: no overall timeout (files can be
+// large), but a bounded wait for the response headers.
+var fileClient = &http.Client{Transport: &http.Transport{
+	Proxy:                 http.ProxyFromEnvironment,
+	ResponseHeaderTimeout: 60 * time.Second,
+}}
+
+// DownloadFile downloads a page attachment (pptx, pdf, xlsx, …) to destPath.
+// An existing file of the expected size is kept (unless force); a changed
+// size means a new version and is re-downloaded. The file is written next to
+// destPath first and renamed, so an interrupted download leaves no partial
+// file behind.
+func (d *AssetDownloader) DownloadFile(destPath, rawURL string, size int64) error {
+	d.mu.Lock()
+	force := d.force
+	client := d.fileClient
+	d.mu.Unlock()
+	if client == nil {
+		client = fileClient
+	}
+	if fi, err := os.Stat(destPath); err == nil && !force && fi.Size() > 0 && (size <= 0 || fi.Size() == size) {
+		return nil
+	}
+	d.rateLimitWait()
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return err
+	}
+	d.mu.Lock()
+	for k, v := range d.authHeaders {
+		req.Header.Set(k, v)
+	}
+	d.mu.Unlock()
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("download %s: %w", rawURL, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download %s: HTTP %d", rawURL, resp.StatusCode)
+	}
+	if ext := strings.ToLower(filepath.Ext(destPath)); ext != ".html" && ext != ".htm" && looksLikeLoginPage(resp) {
+		return fmt.Errorf("download %s: got an HTML page (not the file) — session likely missing or expired", rawURL)
+	}
+	if err := os.MkdirAll(filepath.Dir(destPath), 0o755); err != nil {
+		return err
+	}
+	tmp := destPath + ".part"
+	f, err := os.Create(tmp)
+	if err != nil {
+		return err
+	}
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		f.Close()
+		_ = os.Remove(tmp)
+		return fmt.Errorf("download %s: %w", rawURL, err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	if err := os.Rename(tmp, destPath); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	if d.log.Enabled() {
+		d.log.Infow("attachment downloaded", "url", rawURL, "path", destPath)
+	}
+	return nil
 }

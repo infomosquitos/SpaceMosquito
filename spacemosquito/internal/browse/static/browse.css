@@ -4,16 +4,33 @@ body { margin: 0; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", 
 body.sm-doc { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
 header { border-bottom: 1px solid #8884; margin-bottom: 16px; }
 header nav, .sm-meta { font-size: 13px; }
+header h1 + .sm-byline { margin-top: -8px; }
 .sm-meta { opacity: .75; }
 .hidden { display: none !important; }
 
-/* Page content */
+/* Page content. On pages with the sidebar, text keeps a readable width while
+   tables and code blocks may use the whole column; only content wider than
+   that scrolls, with shadows on the edges that hide more columns. */
 main img { max-width: 100%; height: auto; }
-main table { border-collapse: collapse; display: block; overflow-x: auto; }
-main th, main td { border: 1px solid #8886; padding: 4px 8px; vertical-align: top; }
+main table { border-collapse: collapse; display: block; width: fit-content; max-width: 100%; overflow-x: auto;
+  background:
+    linear-gradient(to right, Canvas 30%, transparent) left / 40px 100% no-repeat local,
+    linear-gradient(to left, Canvas 30%, transparent) right / 40px 100% no-repeat local,
+    linear-gradient(to right, #0004, transparent) left / 16px 100% no-repeat scroll,
+    linear-gradient(to left, #0004, transparent) right / 16px 100% no-repeat scroll; }
+main th, main td { border: 1px solid #8886; padding: 4px 8px; vertical-align: top; overflow-wrap: break-word; }
+/* Links shown as their URL would otherwise set a column's minimum width and
+   push wide tables into scrolling; let them wrap anywhere. Ordinary words
+   stay whole. */
+main td a, main th a { overflow-wrap: anywhere; }
 main pre { padding: 12px; overflow-x: auto; background: #8881; border-radius: 4px; }
 main code { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
 main blockquote { margin: 0; padding: 0 16px; border-left: 4px solid #8886; }
+.sm-files { margin-top: 32px; padding-top: 8px; border-top: 1px solid #8884; }
+.sm-files h2 { font-size: 18px; }
+.sm-files ul { list-style: none; padding: 0; }
+.sm-files li { margin: 6px 0; }
+.sm-pdf { display: block; width: 100%; height: 80vh; border: 1px solid #8886; border-radius: 4px; }
 
 /* Inputs and buttons */
 input[type=search] { box-sizing: border-box; padding: 6px 10px; font: inherit; font-size: 14px; border: 1px solid #8886; border-radius: 4px; background: transparent; color: inherit; }
@@ -50,7 +67,9 @@ body.sm-page { display: grid; grid-template-columns: 300px minmax(0, 1fr); }
 #sm-nav a:hover { text-decoration: underline; }
 #sm-nav .sm-count { display: none; }
 a.sm-current { font-weight: 600; background: #8883; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
-.sm-content { max-width: 960px; padding: 24px 32px; box-sizing: border-box; }
+.sm-content { min-width: 0; padding: 24px 32px; box-sizing: border-box; }
+.sm-content > header, main > * { max-width: 896px; }
+main > table, main > pre { max-width: 100%; }
 #sm-toggle { display: none; }
 
 /* Content search: quick search top bar (pages) */

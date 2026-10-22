@@ -67,26 +67,23 @@ func ReindexAll(ctx context.Context, db store.Store, savedBase string) (ReindexR
 	return result, nil
 }
 
-// resolveDir returns the saved page directory, trying the recorded FileDir
-// first and then remapping under savedBase for catalogs moved between machines.
+// resolveDir returns the saved page directory. With a savedBase, only
+// directories inside it are used: the recorded FileDir may point at another
+// catalog (one moved, or the original of a copy), which must not be
+// modified. The page is looked up as savedBase/<space>/<page dir>.
 func resolveDir(page store.Page, savedBase string) string {
-	candidates := []string{}
-	if page.FileDir != "" {
-		candidates = append(candidates, page.FileDir)
-	}
+	recorded := []string{page.FileDir}
 	if page.HTMLPath != "" {
-		candidates = append(candidates, filepath.Dir(page.HTMLPath))
+		recorded = append(recorded, filepath.Dir(page.HTMLPath))
 	}
-	if savedBase != "" && page.FileDir != "" {
-		candidates = append(candidates, filepath.Join(savedBase, filepath.Base(filepath.Dir(page.FileDir)), filepath.Base(page.FileDir)))
-	}
-
-	seen := map[string]bool{}
-	for _, c := range candidates {
-		if c == "" || seen[c] {
+	for _, rec := range recorded {
+		if rec == "" {
 			continue
 		}
-		seen[c] = true
+		c := rec
+		if savedBase != "" {
+			c = filepath.Join(savedBase, filepath.Base(filepath.Dir(rec)), filepath.Base(rec))
+		}
 		if st, err := os.Stat(c); err == nil && st.IsDir() {
 			return c
 		}

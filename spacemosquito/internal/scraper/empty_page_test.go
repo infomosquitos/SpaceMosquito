@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vkh/spacemosquito/internal/session"
 	"github.com/vkh/spacemosquito/internal/storage"
@@ -29,7 +30,8 @@ func TestCrawlPage_emptyBodyParentPage(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"id":      "43",
 			"title":   "1. TEAM AGREEMENTS",
-			"version": map[string]any{"number": 2},
+			"version": map[string]any{"number": 2, "when": "2024-10-03T14:30:00.000Z", "by": map[string]any{"displayName": "Bob"}},
+			"history": map[string]any{"createdDate": "2022-03-12T09:00:00.000+01:00", "createdBy": map[string]any{"displayName": "Ann"}},
 			"space":   map[string]any{"key": "PROJ"},
 			"body":    map[string]any{"storage": map[string]any{"value": ""}},
 			// Cloud webui is relative to /wiki.
@@ -56,12 +58,22 @@ func TestCrawlPage_emptyBodyParentPage(t *testing.T) {
 	if got.BodyFormat != "storage" || got.Content != "" {
 		t.Fatalf("body_format=%q content=%q, want storage + empty", got.BodyFormat, got.Content)
 	}
+	h := got.History
+	if h.CreatedBy != "Ann" || h.CreatedAt == nil || !h.CreatedAt.Equal(time.Date(2022, 3, 12, 8, 0, 0, 0, time.UTC)) ||
+		h.UpdatedBy != "Bob" || h.UpdatedAt == nil || !h.UpdatedAt.Equal(time.Date(2024, 10, 3, 14, 30, 0, 0, time.UTC)) {
+		t.Fatalf("history = %+v", h)
+	}
 	meta, err := os.ReadFile(filepath.Join(got.FileDir, "metadata.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	if want := srv.URL + "/wiki/spaces/PROJ/pages/43/"; !strings.Contains(string(meta), want) {
 		t.Fatalf("confluence_url lacks /wiki: %s", meta)
+	}
+	for _, want := range []string{`"author": "Ann"`, `"created_at": "2022-03-12T08:00:00Z"`, `"updated_by": "Bob"`, `"updated_at": "2024-10-03T14:30:00Z"`} {
+		if !strings.Contains(string(meta), want) {
+			t.Fatalf("metadata.json lacks %s: %s", want, meta)
+		}
 	}
 	// Storage Format pages are rendered by the browse UI from content.md
 	// (ADR-018); no index.html is written.

@@ -1,6 +1,7 @@
 package csf
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -53,7 +54,12 @@ func (linkRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, erro
 			}
 			return false
 		case "ri:attachment":
-			out = firstNonEmpty(label, ch.AttrOr("ri:filename", ""))
+			name := ch.AttrOr("ri:filename", "")
+			out = firstNonEmpty(label, name)
+			// A file attachment links its saved copy (images are inline).
+			if f, ok := ctx.Files[name]; ok && f.Href != "" && out != "" {
+				out = fmt.Sprintf("[%s](<%s>)", out, f.Href)
+			}
 			return false
 		case "ri:space":
 			out = firstNonEmpty(label, ch.AttrOr("ri:space-key", ""))

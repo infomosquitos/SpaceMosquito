@@ -23,6 +23,9 @@ type Store interface {
 	DeleteSpace(ctx context.Context, spaceKey string) error
 
 	UpsertPage(ctx context.Context, page *Page) error
+	// UpdatePageHistory sets a saved page's Confluence history; empty
+	// fields keep the stored values. No error when the page is not saved.
+	UpdatePageHistory(ctx context.Context, spaceKey string, confluenceID int, h PageHistory) error
 	GetPage(ctx context.Context, spaceKey string, confluenceID int) (*Page, error)
 	GetPageByConfluenceID(ctx context.Context, confluenceID int, spaceKey string) (*Page, string, error)
 	ListPages(ctx context.Context, spaceKey string, limit int, afterConfluenceID *int) ([]Page, error)

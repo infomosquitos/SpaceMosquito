@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/vkh/spacemosquito/internal/session"
@@ -133,8 +134,8 @@ func TestFetchPageListAPI_cloud(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		if !strings.Contains(r.URL.RawQuery, "expand=version,ancestors") {
-			t.Error("expected expand=version,ancestors in query")
+		if !strings.Contains(r.URL.RawQuery, "expand=version,ancestors,history") {
+			t.Error("expected expand=version,ancestors,history in query")
 		}
 		page++
 		if page == 1 {
@@ -161,6 +162,15 @@ func TestFetchPageListAPI_cloud(t *testing.T) {
 	}
 	if pages[0].ParentID != nil {
 		t.Errorf("root page parent = %d, want none", *pages[0].ParentID)
+	}
+	// Discovery carries Confluence history, so a crawl can store it for
+	// pages it skips as unchanged.
+	if h := pages[0].History; h.CreatedBy != "Ann" || h.UpdatedBy != "Bob" || h.CreatedAt == nil || h.UpdatedAt == nil ||
+		h.UpdatedAt.Format(time.RFC3339) != "2024-10-03T14:30:00Z" {
+		t.Errorf("history = %+v", h)
+	}
+	if !pages[1].History.IsZero() {
+		t.Errorf("page without history fields: %+v", pages[1].History)
 	}
 	if pages[1].ParentID == nil || *pages[1].ParentID != 100000001 {
 		t.Errorf("parent = %v, want nearest ancestor 100000001", pages[1].ParentID)

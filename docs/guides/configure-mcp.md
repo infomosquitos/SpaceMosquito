@@ -111,6 +111,8 @@ API key is required for the default local bind. Do **not** use `--transport sse`
 
 Typical flow: search → take `confluence_id` → `confluence_get_page`.
 
+Search hits include `history.updated_by` / `history.updated_at` (last Confluence update) and `confluence_get_page` returns `history` with `created_by`, `created_at`, `updated_by` and `updated_at` when known, so agents can judge how current a page is. `updated_at` at the top level of a page is the local save time.
+
 Page `content` is **Markdown** (same as CLI / REST).
 
 ## Smoke test without an IDE

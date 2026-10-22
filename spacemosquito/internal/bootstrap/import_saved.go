@@ -70,6 +70,7 @@ type importRecord struct {
 	metadataPath string
 	fileDir      string
 	updatedAt    time.Time
+	history      store.PageHistory
 	savedAt      time.Time
 	modTime      time.Time
 }
@@ -223,6 +224,7 @@ func parseRecord(metaPath string) (importRecord, string, error) {
 	rec.spaceURL = deriveSpaceURL(meta.ConfluenceURL, rec.spaceKey)
 	rec.updatedAt = firstNonZero(meta.UpdatedAt.UTC(), meta.SavedAt.UTC(), rec.modTime)
 	rec.savedAt = firstNonZero(meta.SavedAt.UTC(), rec.modTime)
+	rec.history = metadataHistory(meta)
 
 	rec.confluenceID = parseConfluenceID(meta.ConfluenceURL)
 	if rec.confluenceID <= 0 {
@@ -286,6 +288,7 @@ func applyRecords(ctx context.Context, db store.Store, records []importRecord, l
 			FileDir:      rec.fileDir,
 			BodyFormat:   contentmd.DetectBodyFormat(rec.fileDir),
 			UpdatedAt:    rec.updatedAt,
+			History:      rec.history,
 		}
 		if sid, ok := spaceIDs[rec.spaceKey]; ok {
 			if parsed, parseErr := uuid.Parse(sid); parseErr == nil {
@@ -375,4 +378,26 @@ func writeReport(dir string, report Report) error {
 		return fmt.Errorf("write report: %w", err)
 	}
 	return nil
+}
+
+// metadataHistory reads Confluence history from metadata.json. Versions
+// before 0.8.1 wrote the local save time into created_at/updated_at and left
+// the names empty, so a time is trusted only together with its name.
+func metadataHistory(meta storage.Metadata) store.PageHistory {
+	var h store.PageHistory
+	if meta.Author != "" {
+		h.CreatedBy = meta.Author
+		if !meta.CreatedAt.IsZero() {
+			t := meta.CreatedAt.UTC()
+			h.CreatedAt = &t
+		}
+	}
+	if meta.UpdatedBy != "" {
+		h.UpdatedBy = meta.UpdatedBy
+		if !meta.UpdatedAt.IsZero() {
+			t := meta.UpdatedAt.UTC()
+			h.UpdatedAt = &t
+		}
+	}
+	return h
 }

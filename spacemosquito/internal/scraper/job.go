@@ -373,6 +373,7 @@ func (r *CrawlRunner) Run(ctx context.Context, job *CrawlJob) error {
 				if r.log.Enabled() {
 					r.log.Infow("skipping unchanged page", "job_id", job.ID, "page_id", pg.ConfluenceID, "version", pg.Version)
 				}
+				scraper.refreshHistory(pageInfo.SpaceKey, pg)
 				r.manager.mu.Lock()
 				job.Completed++
 				if job.TotalPages > 0 {

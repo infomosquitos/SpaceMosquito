@@ -357,3 +357,48 @@ func TestURLPathExt(t *testing.T) {
 		t.Errorf("got %q, want empty", got)
 	}
 }
+
+func TestAssetDownloader_DownloadFile(t *testing.T) {
+	body := "v1-data"
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		if r.URL.Path == "/login" {
+			w.Header().Set("Content-Type", "text/html")
+			_, _ = w.Write([]byte("<html>login</html>"))
+			return
+		}
+		_, _ = w.Write([]byte(body))
+	}))
+	defer srv.Close()
+	d := NewAssetDownloader(logging.Sugar{})
+	d.SetClientForTest(srv.Client())
+	dest := filepath.Join(t.TempDir(), "assets", "attachments", "Deck 1.pptx")
+
+	if err := d.DownloadFile(dest, srv.URL+"/f", int64(len(body))); err != nil {
+		t.Fatal(err)
+	}
+	// Same size: kept without a request.
+	if err := d.DownloadFile(dest, srv.URL+"/f", int64(len(body))); err != nil || hits != 1 {
+		t.Fatalf("unchanged file re-downloaded: hits=%d err=%v", hits, err)
+	}
+	// New version (size changed): replaced.
+	body = "version-2-data"
+	if err := d.DownloadFile(dest, srv.URL+"/f", int64(len(body))); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(dest); string(b) != body || hits != 2 {
+		t.Fatalf("got %q after %d hits", b, hits)
+	}
+	if _, err := os.Stat(dest + ".part"); !os.IsNotExist(err) {
+		t.Fatal("partial file left behind")
+	}
+	// A login page instead of the file is an error, not a saved file.
+	login := filepath.Join(filepath.Dir(dest), "Sheet.xlsx")
+	if err := d.DownloadFile(login, srv.URL+"/login", 10); err == nil {
+		t.Fatal("login page accepted as attachment")
+	}
+	if _, err := os.Stat(login); !os.IsNotExist(err) {
+		t.Fatal("login page saved")
+	}
+}

@@ -228,8 +228,9 @@ func (d *DB) UpsertPage(ctx context.Context, page *store.Page) error {
 	}
 	now := time.Now().UTC().Format(time.RFC3339)
 	_, err := d.sql.ExecContext(ctx,
-		`INSERT INTO pages (id, space_id, confluence_id, version, title, parent_confluence_id, content, html_path, raw_html_path, metadata_path, file_dir, body_format, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`INSERT INTO pages (id, space_id, confluence_id, version, title, parent_confluence_id, content, html_path, raw_html_path, metadata_path, file_dir, body_format, created_at, updated_at,
+		                    confluence_created_by, confluence_created_at, confluence_updated_by, confluence_updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		 ON CONFLICT (space_id, confluence_id) DO UPDATE SET
 		   version=excluded.version,
 		   title=excluded.title,
@@ -240,20 +241,84 @@ func (d *DB) UpsertPage(ctx context.Context, page *store.Page) error {
 		   metadata_path=excluded.metadata_path,
 		   file_dir=excluded.file_dir,
 		   body_format=excluded.body_format,
-		   updated_at=excluded.updated_at`,
+		   updated_at=excluded.updated_at,`+historyUpsertSet,
 		page.ID.String(), page.SpaceID.String(), page.ConfluenceID, page.Version, page.Title, page.ParentConfluenceID,
 		page.Content, page.HTMLPath, page.RawHTMLPath, page.MetadataPath, page.FileDir, page.BodyFormat, now, now,
+		page.History.CreatedBy, timeArg(page.History.CreatedAt), page.History.UpdatedBy, timeArg(page.History.UpdatedAt),
 	)
 	return err
+}
+
+// historyUpsertSet keeps stored Confluence history when a save does not
+// know it (browser fallback): empty values never overwrite.
+const historyUpsertSet = `
+		   confluence_created_by=COALESCE(NULLIF(excluded.confluence_created_by, ''), pages.confluence_created_by),
+		   confluence_created_at=COALESCE(excluded.confluence_created_at, pages.confluence_created_at),
+		   confluence_updated_by=COALESCE(NULLIF(excluded.confluence_updated_by, ''), pages.confluence_updated_by),
+		   confluence_updated_at=COALESCE(excluded.confluence_updated_at, pages.confluence_updated_at)`
+
+// UpdatePageHistory sets a saved page's Confluence history (crawls refresh it
+// for pages skipped as unchanged); empty fields keep the stored values.
+func (d *DB) UpdatePageHistory(ctx context.Context, spaceKey string, confluenceID int, h store.PageHistory) error {
+	if h.IsZero() {
+		return nil
+	}
+	_, err := d.sql.ExecContext(ctx,
+		`UPDATE pages SET
+		   confluence_created_by=COALESCE(NULLIF(?, ''), confluence_created_by),
+		   confluence_created_at=COALESCE(?, confluence_created_at),
+		   confluence_updated_by=COALESCE(NULLIF(?, ''), confluence_updated_by),
+		   confluence_updated_at=COALESCE(?, confluence_updated_at)
+		 WHERE confluence_id = ? AND space_id = (SELECT id FROM spaces WHERE key = ?)`,
+		h.CreatedBy, timeArg(h.CreatedAt), h.UpdatedBy, timeArg(h.UpdatedAt), confluenceID, spaceKey)
+	return err
+}
+
+// timeArg stores an optional time as RFC3339 (UTC) or NULL.
+func timeArg(t *time.Time) any {
+	if t == nil || t.IsZero() {
+		return nil
+	}
+	return t.UTC().Format(time.RFC3339)
+}
+
+// historyCols scans the confluence_* history columns of a page row.
+type historyCols struct {
+	createdBy, updatedBy string
+	createdAt, updatedAt sql.NullString
+}
+
+func (h *historyCols) targets() []any {
+	return []any{&h.createdBy, &h.createdAt, &h.updatedBy, &h.updatedAt}
+}
+
+func (h *historyCols) history() (store.PageHistory, error) {
+	out := store.PageHistory{CreatedBy: h.createdBy, UpdatedBy: h.updatedBy}
+	for _, f := range []struct {
+		src sql.NullString
+		dst **time.Time
+	}{{h.createdAt, &out.CreatedAt}, {h.updatedAt, &out.UpdatedAt}} {
+		if !f.src.Valid || f.src.String == "" {
+			continue
+		}
+		t, err := parseTime(f.src.String)
+		if err != nil {
+			return out, err
+		}
+		*f.dst = &t
+	}
+	return out, nil
 }
 
 func (d *DB) GetPage(ctx context.Context, spaceKey string, pageID int) (*store.Page, error) {
 	var p store.Page
 	var idStr, spaceIDStr string
 	var createdAt, updatedAt string
+	var hc historyCols
 	err := d.sql.QueryRowContext(ctx,
 		`SELECT p.id, p.space_id, p.confluence_id, p.version, p.title, p.parent_confluence_id,
 		        p.content, p.html_path, p.raw_html_path, p.metadata_path, p.file_dir, COALESCE(p.body_format, ''),
+		        p.confluence_created_by, p.confluence_created_at, p.confluence_updated_by, p.confluence_updated_at,
 		        p.created_at, p.updated_at
 		 FROM pages p
 		 JOIN spaces s ON s.id = p.space_id
@@ -261,6 +326,7 @@ func (d *DB) GetPage(ctx context.Context, spaceKey string, pageID int) (*store.P
 		spaceKey, pageID,
 	).Scan(&idStr, &spaceIDStr, &p.ConfluenceID, &p.Version, &p.Title, &p.ParentConfluenceID,
 		&p.Content, &p.HTMLPath, &p.RawHTMLPath, &p.MetadataPath, &p.FileDir, &p.BodyFormat,
+		&hc.createdBy, &hc.createdAt, &hc.updatedBy, &hc.updatedAt,
 		&createdAt, &updatedAt)
 	if err != nil {
 		return nil, err
@@ -279,6 +345,9 @@ func (d *DB) GetPage(ctx context.Context, spaceKey string, pageID int) (*store.P
 	}
 	p.UpdatedAt, err = parseTime(updatedAt)
 	if err != nil {
+		return nil, err
+	}
+	if p.History, err = hc.history(); err != nil {
 		return nil, err
 	}
 	return &p, nil
@@ -302,6 +371,7 @@ func (d *DB) GetPageByConfluenceID(ctx context.Context, confluenceID int, spaceK
 	rows, err := d.sql.QueryContext(ctx,
 		`SELECT p.id, p.space_id, p.confluence_id, p.version, p.title, p.parent_confluence_id,
 		        p.content, p.html_path, p.raw_html_path, p.metadata_path, p.file_dir, COALESCE(p.body_format, ''),
+		        p.confluence_created_by, p.confluence_created_at, p.confluence_updated_by, p.confluence_updated_at,
 		        p.created_at, p.updated_at, s.key
 		 FROM pages p
 		 JOIN spaces s ON s.id = p.space_id
@@ -358,6 +428,7 @@ func (d *DB) ListPages(ctx context.Context, spaceKey string, limit int, afterCon
 	}
 	query := `SELECT p.id, p.space_id, p.confluence_id, p.version, p.title, p.parent_confluence_id,
 		        p.content, p.html_path, p.raw_html_path, p.metadata_path, p.file_dir, COALESCE(p.body_format, ''),
+		        p.confluence_created_by, p.confluence_created_at, p.confluence_updated_by, p.confluence_updated_at,
 		        p.created_at, p.updated_at
 		 FROM pages p
 		 JOIN spaces s ON s.id = p.space_id
@@ -391,6 +462,7 @@ func (d *DB) ListAllPages(ctx context.Context) ([]store.Page, error) {
 	rows, err := d.sql.QueryContext(ctx,
 		`SELECT p.id, p.space_id, p.confluence_id, p.version, p.title, p.parent_confluence_id,
 		        p.content, p.html_path, p.raw_html_path, p.metadata_path, p.file_dir, COALESCE(p.body_format, ''),
+		        p.confluence_created_by, p.confluence_created_at, p.confluence_updated_by, p.confluence_updated_at,
 		        p.created_at, p.updated_at
 		 FROM pages p
 		 ORDER BY p.space_id, p.confluence_id`)
@@ -495,7 +567,8 @@ func (d *DB) searchPagesFTS(ctx context.Context, query, spaceKey string, limit i
 		SELECT p.confluence_id, s.key, p.title,
 		       snippet(pages_fts, 2, char(57344), char(57345), '...', 20) AS excerpt, -- U+E000/U+E001: search.MatchStart/MatchEnd
 		       bm25(pages_fts, 0.0, 10.0, 1.0) AS similarity,
-		       CASE WHEN p.file_dir <> '' THEN p.file_dir || '/content.md' ELSE p.html_path END, p.id -- file_path: page Markdown (ADR-018)
+		       CASE WHEN p.file_dir <> '' THEN p.file_dir || '/content.md' ELSE p.html_path END, p.id, -- file_path: page Markdown (ADR-018)
+		       p.confluence_updated_by, p.confluence_updated_at
 		FROM pages_fts
 		JOIN pages p ON p.id = pages_fts.page_id
 		JOIN spaces s ON s.id = p.space_id
@@ -527,7 +600,8 @@ func (d *DB) searchPagesTitleFallback(ctx context.Context, query, spaceKey strin
 		SELECT p.confluence_id, s.key, p.title,
 		       substr(p.title, 1, 200) AS excerpt,
 		       0.0 AS similarity,
-		       CASE WHEN p.file_dir <> '' THEN p.file_dir || '/content.md' ELSE p.html_path END, p.id -- file_path: page Markdown (ADR-018)
+		       CASE WHEN p.file_dir <> '' THEN p.file_dir || '/content.md' ELSE p.html_path END, p.id, -- file_path: page Markdown (ADR-018)
+		       p.confluence_updated_by, p.confluence_updated_at
 		FROM pages p
 		JOIN spaces s ON s.id = p.space_id
 		WHERE 1=1`
@@ -557,13 +631,22 @@ func scanSearchResults(rows *sql.Rows) ([]store.SearchResult, error) {
 	for rows.Next() {
 		var r store.SearchResult
 		var idStr string
-		if err := rows.Scan(&r.ConfluenceID, &r.SpaceKey, &r.Title, &r.Excerpt, &r.Similarity, &r.FilePath, &idStr); err != nil {
+		var updatedAt sql.NullString
+		if err := rows.Scan(&r.ConfluenceID, &r.SpaceKey, &r.Title, &r.Excerpt, &r.Similarity, &r.FilePath, &idStr,
+			&r.UpdatedBy, &updatedAt); err != nil {
 			return nil, err
 		}
 		var err error
 		r.InternalID, err = uuid.Parse(idStr)
 		if err != nil {
 			return nil, err
+		}
+		if updatedAt.Valid && updatedAt.String != "" {
+			t, err := parseTime(updatedAt.String)
+			if err != nil {
+				return nil, err
+			}
+			r.UpdatedAt = &t
 		}
 		results = append(results, r)
 	}
@@ -617,8 +700,10 @@ func scanPage(rows rowScanner) (store.Page, error) {
 	var p store.Page
 	var idStr, spaceIDStr string
 	var createdAt, updatedAt string
+	var hc historyCols
 	err := rows.Scan(&idStr, &spaceIDStr, &p.ConfluenceID, &p.Version, &p.Title, &p.ParentConfluenceID,
 		&p.Content, &p.HTMLPath, &p.RawHTMLPath, &p.MetadataPath, &p.FileDir, &p.BodyFormat,
+		&hc.createdBy, &hc.createdAt, &hc.updatedBy, &hc.updatedAt,
 		&createdAt, &updatedAt)
 	if err != nil {
 		return p, err
@@ -639,6 +724,9 @@ func scanPage(rows rowScanner) (store.Page, error) {
 	if err != nil {
 		return p, err
 	}
+	if p.History, err = hc.history(); err != nil {
+		return p, err
+	}
 	return p, nil
 }
 
@@ -646,8 +734,10 @@ func scanPageWithSpaceKey(rows rowScanner) (store.Page, string, error) {
 	var p store.Page
 	var idStr, spaceIDStr, spaceKey string
 	var createdAt, updatedAt string
+	var hc historyCols
 	err := rows.Scan(&idStr, &spaceIDStr, &p.ConfluenceID, &p.Version, &p.Title, &p.ParentConfluenceID,
 		&p.Content, &p.HTMLPath, &p.RawHTMLPath, &p.MetadataPath, &p.FileDir, &p.BodyFormat,
+		&hc.createdBy, &hc.createdAt, &hc.updatedBy, &hc.updatedAt,
 		&createdAt, &updatedAt, &spaceKey)
 	if err != nil {
 		return p, "", err
@@ -666,6 +756,9 @@ func scanPageWithSpaceKey(rows rowScanner) (store.Page, string, error) {
 	}
 	p.UpdatedAt, err = parseTime(updatedAt)
 	if err != nil {
+		return p, "", err
+	}
+	if p.History, err = hc.history(); err != nil {
 		return p, "", err
 	}
 	return p, spaceKey, nil

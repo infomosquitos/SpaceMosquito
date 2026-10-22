@@ -85,10 +85,10 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 		var apiURL string
 		if flavor == session.FlavorCloud {
 			// Cloud V1 API
-			apiURL = fmt.Sprintf("%s/wiki/rest/api/space/%s/content/page?limit=%d&start=%d&expand=version,ancestors", rootURL, spaceKey, limit, start)
+			apiURL = fmt.Sprintf("%s/wiki/rest/api/space/%s/content/page?limit=%d&start=%d&expand=version,ancestors,history", rootURL, spaceKey, limit, start)
 		} else {
 			// Server/DC API
-			apiURL = fmt.Sprintf("%s/rest/api/content?spaceKey=%s&type=page&limit=%d&start=%d&expand=version,ancestors", rootURL, spaceKey, limit, start)
+			apiURL = fmt.Sprintf("%s/rest/api/content?spaceKey=%s&type=page&limit=%d&start=%d&expand=version,ancestors,history", rootURL, spaceKey, limit, start)
 		}
 
 		req, err := http.NewRequest("GET", apiURL, nil)
@@ -116,11 +116,10 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 
 		var result struct {
 			Results []struct {
-				ID      string `json:"id"`
-				Title   string `json:"title"`
-				Version struct {
-					Number int `json:"number"`
-				} `json:"version"`
+				ID      string     `json:"id"`
+				Title   string     `json:"title"`
+				Version apiVersion `json:"version"`
+				History apiHistory `json:"history"`
 				// Ancestors (root first) give the parent at discovery time,
 				// so the page tree holds even when a page later falls back to
 				// the browser, which cannot read it.
@@ -154,6 +153,7 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 				Version:      r.Version.Number,
 				Title:        r.Title,
 				URL:          url,
+				History:      pageHistory(r.Version, r.History),
 			}
 			if n := len(r.Ancestors); n > 0 {
 				var parentID int

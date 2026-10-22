@@ -34,6 +34,24 @@ func (c DatabaseConfig) DriverName() string {
 
 type StorageConfig struct {
 	BasePath string `yaml:"base_path"`
+	// MaxAttachmentMB caps the size of page attachments (pptx, pdf, …) that
+	// crawls download; larger files are linked to Confluence instead.
+	// 0 = default (DefaultMaxAttachmentMB), -1 = no limit.
+	MaxAttachmentMB int `yaml:"max_attachment_mb"`
+}
+
+// DefaultMaxAttachmentMB is the attachment size limit when none is configured.
+const DefaultMaxAttachmentMB = 100
+
+// MaxAttachmentBytes returns the attachment size limit in bytes; -1 = none.
+func (s StorageConfig) MaxAttachmentBytes() int64 {
+	switch {
+	case s.MaxAttachmentMB < 0:
+		return -1
+	case s.MaxAttachmentMB == 0:
+		return DefaultMaxAttachmentMB << 20
+	}
+	return int64(s.MaxAttachmentMB) << 20
 }
 
 type SessionConfig struct {

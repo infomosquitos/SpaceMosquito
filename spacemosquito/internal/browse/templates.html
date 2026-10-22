@@ -75,13 +75,20 @@
 {{end}}<header>
 <nav><a href="{{.RootHref}}">All spaces</a> · <a href="{{.SpaceHref}}">{{.Key}}</a>{{if .SourceURL}} · <a href="{{.SourceURL}}">View in Confluence</a>{{end}}</nav>
 <h1>{{.Title}}</h1>
-</header>
+{{if .Byline}}<p class="sm-meta sm-byline">{{.Byline}}</p>
+{{end}}</header>
 <main>
 {{if .Body}}{{.Body}}{{else if .Children}}<p><em>This page has no content of its own. Child pages:</em></p>
 <ul>
 {{range .Children}}<li><a href="{{.Href}}">{{.Title}}</a></li>
 {{end}}</ul>{{else}}<p><em>This page has no content of its own.</em></p>{{end}}
-</main>
+{{if .Files}}<section class="sm-files">
+<h2>Attachments ({{len .Files}})</h2>
+<ul>
+{{range .Files}}<li><span class="sm-icon" aria-hidden="true">{{.Icon}}</span> <a href="{{.Href}}"{{if .Download}} download{{end}}>{{.Name}}</a>{{if or .Size (not .Local)}} <span class="sm-meta">{{.Size}}{{if not .Local}}{{if .Size}} · {{end}}not saved locally, opens in Confluence{{end}}</span>{{end}}</li>
+{{end}}</ul>
+</section>
+{{end}}</main>
 </div>
 </body>
 </html>

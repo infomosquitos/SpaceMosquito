@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vkh/spacemosquito/internal/config"
 	"github.com/vkh/spacemosquito/internal/datastore"
@@ -48,15 +49,20 @@ func newSite(t *testing.T) *Site {
 		t.Fatal(err)
 	}
 	files := map[string]string{
-		"10-Home/metadata.json":                 `{"title":"Home","body_format":"storage"}`,
-		childDir + "/metadata.json":             `{"title":"Child > X","confluence_url":"https://example.atlassian.net/wiki/spaces/TST/pages/11","body_format":"storage"}`,
-		childDir + "/content.md":                "Intro <script>alert(1)</script>\n\n![shot.png](assets/images/shot.png)\n",
-		childDir + "/raw.html":                  `<p>Intro</p><script>alert(1)</script>`,
-		childDir + "/assets/images/shot.png":    "png",
-		childDir + "/assets/attachments/a.html": "<script>fetch('/api/spaces/TST',{method:'DELETE'})</script>",
-		"12-Rendered/metadata.json":             `{"title":"Rendered","body_format":"rendered"}`,
-		"12-Rendered/index.html":                "<p>extracted</p>",
-		"12-Rendered/content.md":                "Rendered body",
+		"10-Home/metadata.json": `{"title":"Home","body_format":"storage"}`,
+		childDir + "/metadata.json": `{"title":"Child > X","confluence_url":"https://example.atlassian.net/wiki/spaces/TST/pages/11","body_format":"storage",` +
+			`"attachments":[{"original_url":"https://example.atlassian.net/wiki/download/attachments/11/Deck%201.pptx","local_path":"assets/attachments/Deck 1.pptx","name":"Deck 1.pptx","size":2500000},` +
+			`{"original_url":"https://example.atlassian.net/wiki/download/attachments/11/Spec.pdf","local_path":"assets/attachments/Spec.pdf","name":"Spec.pdf","size":900},` +
+			`{"original_url":"https://example.atlassian.net/wiki/download/attachments/11/Huge.mp4","local_path":"","name":"Huge.mp4","size":5368709120}]}`,
+		childDir + "/content.md":                     "Intro <script>alert(1)</script>\n\n![shot.png](assets/images/shot.png)\n\n📎 [Spec.pdf](<assets/attachments/Spec.pdf> \"attachment\")\n",
+		childDir + "/assets/attachments/Deck 1.pptx": "PPTX",
+		childDir + "/assets/attachments/Spec.pdf":    "%PDF-1.4",
+		childDir + "/raw.html":                       `<p>Intro</p><script>alert(1)</script>`,
+		childDir + "/assets/images/shot.png":         "png",
+		childDir + "/assets/attachments/a.html":      "<script>fetch('/api/spaces/TST',{method:'DELETE'})</script>",
+		"12-Rendered/metadata.json":                  `{"title":"Rendered","body_format":"rendered"}`,
+		"12-Rendered/index.html":                     "<p>extracted</p>",
+		"12-Rendered/content.md":                     "Rendered body",
 	}
 	for rel, body := range files {
 		p := filepath.Join(saved, "TST", rel)
@@ -71,9 +77,12 @@ func newSite(t *testing.T) *Site {
 		t.Fatal(err)
 	}
 	parent := 10
+	created := time.Date(2022, 3, 12, 12, 0, 0, 0, time.UTC)
+	updated := time.Date(2024, 10, 3, 12, 0, 0, 0, time.UTC)
 	for _, p := range []store.Page{
 		{SpaceID: spaceID, ConfluenceID: 10, Title: "Home", BodyFormat: "storage", FileDir: filepath.Join(saved, "TST", "10-Home")},
-		{SpaceID: spaceID, ConfluenceID: 11, Title: "Child > X", Content: "Intro", ParentConfluenceID: &parent, BodyFormat: "storage", FileDir: filepath.Join(saved, "TST", childDir)},
+		{SpaceID: spaceID, ConfluenceID: 11, Title: "Child > X", Content: "Intro", ParentConfluenceID: &parent, BodyFormat: "storage", FileDir: filepath.Join(saved, "TST", childDir),
+			History: store.PageHistory{CreatedBy: "Ann <A>", CreatedAt: &created, UpdatedBy: "Bob", UpdatedAt: &updated}},
 		{SpaceID: spaceID, ConfluenceID: 12, Title: "Rendered", Content: "Rendered body", BodyFormat: "rendered", FileDir: filepath.Join(saved, "TST", "12-Rendered")},
 	} {
 		if err := db.UpsertPage(ctx, &p); err != nil {
@@ -117,6 +126,13 @@ func TestHandler_views(t *testing.T) {
 			`<details open><summary><a href="../10-Home/">Home</a>`,
 			`<a href="../11-Child%20%3E%20X/" class="sm-current" aria-current="page">Child &gt; X</a>`,
 			`class="sm-quick" data-space="TST" data-all="../"`, "3 pages",
+			`<p class="sm-meta sm-byline">Created by Ann &lt;A&gt; on 12 Mar 2022 · Last updated by Bob on 3 Oct 2024</p>`,
+			// File preview (inline PDF via browse.js) and the Attachments section.
+			`<a href="assets/attachments/Spec.pdf" title="attachment">Spec.pdf</a>`,
+			`<h2>Attachments (3)</h2>`,
+			`<a href="assets/attachments/Deck%201.pptx" download>Deck 1.pptx</a> <span class="sm-meta">2.4 MB</span>`,
+			`<a href="assets/attachments/Spec.pdf">Spec.pdf</a> <span class="sm-meta">900 B</span>`,
+			`<a href="https://example.atlassian.net/wiki/download/attachments/11/Huge.mp4">Huge.mp4</a> <span class="sm-meta">5.0 GB · not saved locally, opens in Confluence</span>`,
 			`src="../../.static/browse.js?v=`,
 		}, []string{"<script>alert"}},
 		{"/browse/TST/10-Home/", []string{
@@ -192,6 +208,15 @@ func TestHandler_filesAndErrors(t *testing.T) {
 		if tc.body != "" && !strings.Contains(rec.Body.String(), tc.body) {
 			t.Errorf("%s: body %q lacks %q", tc.path, rec.Body.String(), tc.body)
 		}
+	}
+	// Office files download; PDFs open in the browser's viewer (not sandboxed).
+	if rec := get(t, s, page+"assets/attachments/Deck 1.pptx"); rec.Code != http.StatusOK ||
+		rec.Header().Get("Content-Disposition") != "attachment; filename*=UTF-8''Deck%201.pptx" || rec.Header().Get("Content-Security-Policy") != "sandbox" {
+		t.Errorf("pptx: status %d disposition %q CSP %q", rec.Code, rec.Header().Get("Content-Disposition"), rec.Header().Get("Content-Security-Policy"))
+	}
+	if rec := get(t, s, page+"assets/attachments/Spec.pdf"); rec.Code != http.StatusOK ||
+		rec.Header().Get("Content-Disposition") != "" || rec.Header().Get("Content-Security-Policy") != "" || rec.Header().Get("Content-Type") != "application/pdf" {
+		t.Errorf("pdf: status %d disposition %q CSP %q type %q", rec.Code, rec.Header().Get("Content-Disposition"), rec.Header().Get("Content-Security-Policy"), rec.Header().Get("Content-Type"))
 	}
 	// Saved files cannot run script against the local API.
 	rec := get(t, s, page+"assets/attachments/a.html")

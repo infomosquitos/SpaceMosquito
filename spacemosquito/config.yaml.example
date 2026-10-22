@@ -9,6 +9,9 @@ database:
 
 storage:
   base_path: ~/.spacemosquito/saved
+  # Page attachments (pptx, pdf, xlsx, …) larger than this are not downloaded
+  # but linked to Confluence. Default 100; -1 = no limit.
+  # max_attachment_mb: 100
 
 session:
   # Generate: openssl rand -base64 32

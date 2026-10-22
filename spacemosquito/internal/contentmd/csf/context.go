@@ -12,6 +12,13 @@ type AssetRequest struct {
 	URL      string // absolute download URL
 }
 
+// FileLink is where a page attachment is linked from content.md: the local
+// copy (assets/attachments/…) or, when not downloaded, Confluence.
+type FileLink struct {
+	Href string
+	Size int64
+}
+
 // RenderContext carries per-conversion state and the recursion entry point.
 type RenderContext struct {
 	// PageID is the Confluence page ID, used to build attachment download URLs.
@@ -22,6 +29,10 @@ type RenderContext struct {
 	// Cloud selects the attachment download URL shape: Cloud inserts a /wiki
 	// path prefix, Server/DC does not.
 	Cloud bool
+	// Files are the page's file attachments (pptx, pdf, …) by Confluence
+	// filename. File previews, attachment links and the attachments macro
+	// link them; unknown files render as their name.
+	Files map[string]FileLink
 
 	registry *Registry
 	assets   []AssetRequest

@@ -43,6 +43,10 @@ type Page struct {
 	HTMLPath     string `json:"html_path,omitempty"`
 	RawHTMLPath  string `json:"raw_html_path,omitempty"`
 	MetadataPath string `json:"metadata_path,omitempty"`
+	// History: Confluence created/updated by and when (discovery, API fetch).
+	History store.PageHistory `json:"history,omitempty"`
+	// Files are the page's file attachments (API pages only).
+	Files []attachmentFile `json:"-"`
 }
 
 // CrawlStats tracks crawl progress.
@@ -350,6 +354,7 @@ func (s *Scraper) CrawlSpace(spaceURL string, sess *session.Session) error {
 				if s.log.Enabled() {
 					s.log.Infow("skipping unchanged page", "page_id", pg.ConfluenceID, "version", pg.Version)
 				}
+				s.refreshHistory(pageInfo.SpaceKey, pg)
 				s.mu.Lock()
 				s.stats.SkippedUnchanged++
 				s.stats.TotalPages++ // Count as processed
@@ -458,9 +463,9 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 
 	var apiURL string
 	if sess.Flavor == session.FlavorCloud {
-		apiURL = fmt.Sprintf("%s/wiki/rest/api/content/%d?expand=body.storage,version,ancestors,space", baseURL, pg.ConfluenceID)
+		apiURL = fmt.Sprintf("%s/wiki/rest/api/content/%d?expand=body.storage,version,ancestors,space,history", baseURL, pg.ConfluenceID)
 	} else {
-		apiURL = fmt.Sprintf("%s/rest/api/content/%d?expand=body.storage,version,ancestors,space", baseURL, pg.ConfluenceID)
+		apiURL = fmt.Sprintf("%s/rest/api/content/%d?expand=body.storage,version,ancestors,space,history", baseURL, pg.ConfluenceID)
 	}
 
 	req, err := http.NewRequest("GET", apiURL, nil)
@@ -490,12 +495,11 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 	}
 
 	var result struct {
-		ID      string `json:"id"`
-		Title   string `json:"title"`
-		Version struct {
-			Number int `json:"number"`
-		} `json:"version"`
-		Space struct {
+		ID      string     `json:"id"`
+		Title   string     `json:"title"`
+		Version apiVersion `json:"version"`
+		History apiHistory `json:"history"`
+		Space   struct {
 			Key string `json:"key"`
 		} `json:"space"`
 		Ancestors []struct {
@@ -529,6 +533,7 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 	if result.Version.Number > 0 {
 		pg.Version = result.Version.Number
 	}
+	mergeHistory(&pg.History, pageHistory(result.Version, result.History))
 	if len(result.Ancestors) > 0 {
 		var parentID int
 		if _, err := fmt.Sscanf(result.Ancestors[len(result.Ancestors)-1].ID, "%d", &parentID); err == nil && parentID > 0 {
@@ -562,6 +567,14 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 	pg.CleanHTML = cleanHTML
 	pg.Images = images
 	pg.Attachments = attachments
+
+	// File attachments (pptx, pdf, …): best-effort, a failed listing still
+	// saves the page.
+	if files, err := s.fetchAttachments(baseURL, pg.ConfluenceID, sess); err != nil {
+		s.log.Warnw("list attachments failed", "page_id", pg.ConfluenceID, "error", err)
+	} else {
+		pg.Files = files
+	}
 
 	// Save to disk and DB (shared logic with browser scraping)
 	return s.savePageMetadata(pg, spaceKey, spaceURL, sess.Flavor == session.FlavorCloud)
@@ -618,6 +631,9 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 	// into the page dir and record them alongside any HTML-path images.
 	csfImages, csfDiagrams := s.downloadCSFAssets(dir, assets)
 	pg.Images = append(pg.Images, csfImages...)
+	if len(pg.Files) > 0 {
+		pg.Attachments = s.downloadAttachments(dir, pg.Files)
+	}
 
 	if err := s.storage.SaveRawHTML(dir, pg.RawHTML); err != nil {
 		s.log.Warnw("save raw html failed",
@@ -635,9 +651,10 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 		Title:         pg.Title,
 		ConfluenceURL: pg.URL,
 		SpaceKey:      spaceKey,
-		Author:        "",
-		CreatedAt:     time.Now(),
-		UpdatedAt:     time.Now(),
+		Author:        pg.History.CreatedBy,
+		CreatedAt:     derefTime(pg.History.CreatedAt),
+		UpdatedBy:     pg.History.UpdatedBy,
+		UpdatedAt:     derefTime(pg.History.UpdatedAt),
 		Images:        pg.Images,
 		Diagrams:      csfDiagrams,
 		Attachments:   pg.Attachments,
@@ -691,6 +708,7 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 		MetadataPath:       dir + "/metadata.json",
 		FileDir:            dir,
 		BodyFormat:         bodyFormat,
+		History:            pg.History,
 	}
 
 	if err := s.db.UpsertPage(s.ctx, dbPage); err != nil {
@@ -727,6 +745,7 @@ func (s *Scraper) renderMarkdown(pg *Page, spaceURL string, cloud bool) (string,
 			PageID:  pg.ConfluenceID,
 			BaseURL: extractConfluenceBaseURL(spaceURL),
 			Cloud:   cloud,
+			Files:   s.fileLinks(pg.Files),
 		}
 		md, assets, err := csf.CSFToMarkdown(pg.RawHTML, ctx)
 		if err != nil {

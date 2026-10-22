@@ -29,7 +29,9 @@ func (r *Registry) Match(sel *goquery.Selection) (Rule, bool) {
 //	strip, layout                     — noise removal + structural passthrough
 //	code, drawio                      — code macro + <pre>; drawio diagrams
 //	image, emoticon                   — ac:image assets + emoticons
+//	file, attachments                 — file previews + attachment list
 //	jira, status, panel, expand, toc  — high-volume macros
+//	adf                               — ADF blocks (decisions, panels)
 //	tasklist                          — ac:task-list checkboxes
 //	link, table, html                 — Confluence links, GFM tables, native HTML
 //	fallback                          — any remaining ac:structured-macro
@@ -41,11 +43,14 @@ func DefaultRegistry() *Registry {
 	r.Register(drawioRule{})
 	r.Register(imageRule{})
 	r.Register(emoticonRule{})
+	r.Register(fileRule{})
+	r.Register(attachmentsRule{})
 	r.Register(jiraRule{})
 	r.Register(statusRule{})
 	r.Register(panelRule{})
 	r.Register(expandRule{})
 	r.Register(tocRule{})
+	r.Register(adfRule{})
 	r.Register(tasklistRule{})
 	r.Register(linkRule{})
 	r.Register(tableRule{})

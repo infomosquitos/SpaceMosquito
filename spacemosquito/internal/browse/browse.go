@@ -19,12 +19,17 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
+	"sort"
 	"strings"
+	"time"
 
 	"github.com/vkh/spacemosquito/internal/catalogindex"
 	"github.com/vkh/spacemosquito/internal/contentmd"
+	"github.com/vkh/spacemosquito/internal/contentmd/csf"
 	"github.com/vkh/spacemosquito/internal/spaceops"
+	"github.com/vkh/spacemosquito/internal/storage"
 	"github.com/vkh/spacemosquito/internal/store"
 	"github.com/vkh/spacemosquito/pkg/logging"
 )
@@ -195,10 +200,19 @@ func (s *Site) servePageFile(w http.ResponseWriter, r *http.Request, key, dir st
 	if err != nil || !st.Mode().IsRegular() {
 		return errNotFound
 	}
-	w.Header().Set("Content-Security-Policy", "sandbox")
+	// PDFs are shown inline by the browser's own viewer, which a sandboxed
+	// response would block; it runs no script in this origin. Other
+	// attachments (pptx, xlsx, …) download instead of rendering.
+	isPDF := strings.EqualFold(path.Ext(st.Name()), ".pdf")
+	if !isPDF {
+		w.Header().Set("Content-Security-Policy", "sandbox")
+	}
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	if ctype != "" {
 		w.Header().Set("Content-Type", ctype)
+	}
+	if len(file) >= 3 && file[1] == "attachments" && !isPDF {
+		w.Header().Set("Content-Disposition", "attachment; filename*=UTF-8''"+url.PathEscape(st.Name()))
 	}
 	http.ServeContent(w, r, st.Name(), st.ModTime(), f)
 	return nil
@@ -242,9 +256,10 @@ type spaceView struct {
 type pageView struct {
 	common
 	Key, SpaceHeading, SpaceSummary, SpaceHref, RootHref string
-	Title, SourceURL                                     string
+	Title, SourceURL, Byline                             string
 	Body                                                 template.HTML
 	Children                                             []*viewNode
+	Files                                                []fileView
 	Tree                                                 []*viewNode
 }
 
@@ -333,8 +348,9 @@ func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir s
 	}
 
 	var meta struct {
-		Title         string `json:"title"`
-		ConfluenceURL string `json:"confluence_url"`
+		Title         string             `json:"title"`
+		ConfluenceURL string             `json:"confluence_url"`
+		Attachments   []storage.AssetRef `json:"attachments"`
 	}
 	if b, err := os.ReadFile(filepath.Join(pageDir, "metadata.json")); err == nil {
 		_ = json.Unmarshal(b, &meta)
@@ -359,6 +375,11 @@ func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir s
 		Tree:         viewTree(sp.Roots, "../", file, dir, func(_ int, n *catalogindex.Node) bool { return open[n] }, 0),
 	}
 
+	if node != nil {
+		v.Byline = byline(node.History)
+	}
+	v.Files = fileViews(meta.Attachments)
+
 	md, err := os.ReadFile(filepath.Join(pageDir, contentmd.ContentFileName))
 	switch {
 	case err == nil && strings.TrimSpace(string(md)) != "":
@@ -376,6 +397,87 @@ func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir s
 		}
 	}
 	return tmpl.ExecuteTemplate(w, "page", v)
+}
+
+// fileView is one row of a page's Attachments section.
+type fileView struct {
+	Name, Href, Size, Icon string
+	Local, Download        bool // saved locally; offer as download (not PDF)
+}
+
+// fileViews lists a page's file attachments: the local copy when saved, else
+// the Confluence link (over the size limit or the download failed).
+func fileViews(refs []storage.AssetRef) []fileView {
+	var out []fileView
+	for _, r := range refs {
+		name := r.Name
+		if name == "" {
+			name = path.Base(r.LocalPath)
+		}
+		f := fileView{Name: name, Href: r.OriginalURL, Icon: fileIcon(name)}
+		if r.LocalPath != "" {
+			segs := strings.Split(filepath.ToSlash(r.LocalPath), "/")
+			for i := range segs {
+				segs[i] = url.PathEscape(segs[i])
+			}
+			f.Href = strings.Join(segs, "/")
+			f.Local = true
+			f.Download = !strings.EqualFold(path.Ext(name), ".pdf")
+		}
+		if r.Size > 0 {
+			f.Size = csf.FormatSize(r.Size)
+		}
+		if name == "" || name == "." || f.Href == "" {
+			continue
+		}
+		out = append(out, f)
+	}
+	sort.SliceStable(out, func(i, j int) bool { return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name) })
+	return out
+}
+
+func fileIcon(name string) string {
+	switch strings.ToLower(path.Ext(name)) {
+	case ".pdf":
+		return "📕"
+	case ".ppt", ".pptx", ".key", ".odp":
+		return "📙"
+	case ".xls", ".xlsx", ".csv", ".ods":
+		return "📗"
+	case ".doc", ".docx", ".odt", ".rtf", ".txt", ".md":
+		return "📘"
+	case ".zip", ".7z", ".gz", ".tar", ".rar":
+		return "🗜"
+	case ".mp4", ".mov", ".webm", ".avi":
+		return "🎬"
+	}
+	return "📄"
+}
+
+// byline describes who created and last updated a page in Confluence, e.g.
+// "Created by Ann on 12 Mar 2022 · Last updated by Bob on 3 Oct 2024".
+func byline(h store.PageHistory) string {
+	part := func(verb, by string, at *time.Time) string {
+		s := verb
+		if by != "" {
+			s += " by " + by
+		}
+		if at != nil {
+			s += " on " + at.Local().Format("2 Jan 2006")
+		}
+		if s == verb {
+			return ""
+		}
+		return s
+	}
+	var parts []string
+	if p := part("Created", h.CreatedBy, h.CreatedAt); p != "" {
+		parts = append(parts, p)
+	}
+	if p := part("Last updated", h.UpdatedBy, h.UpdatedAt); p != "" {
+		parts = append(parts, p)
+	}
+	return strings.Join(parts, " · ")
 }
 
 // viewTree converts a page tree into view nodes linking prefix+dir/+file.

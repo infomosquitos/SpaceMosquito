@@ -12,16 +12,20 @@ import (
 )
 
 type Metadata struct {
-	Title         string     `json:"title"`
-	ConfluenceURL string     `json:"confluence_url"`
-	SpaceKey      string     `json:"space_key"`
-	ParentTitle   string     `json:"parent_title,omitempty"`
-	Author        string     `json:"author,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-	Images        []AssetRef `json:"images,omitempty"`
-	Diagrams      []AssetRef `json:"diagrams,omitempty"`
-	Attachments   []AssetRef `json:"attachments,omitempty"`
+	Title         string `json:"title"`
+	ConfluenceURL string `json:"confluence_url"`
+	SpaceKey      string `json:"space_key"`
+	ParentTitle   string `json:"parent_title,omitempty"`
+	// Author created the page in Confluence; UpdatedBy made the last change.
+	// CreatedAt/UpdatedAt are Confluence's times (omitted when unknown);
+	// SavedAt is when the page was saved locally.
+	Author      string     `json:"author,omitempty"`
+	CreatedAt   time.Time  `json:"created_at,omitzero"`
+	UpdatedBy   string     `json:"updated_by,omitempty"`
+	UpdatedAt   time.Time  `json:"updated_at,omitzero"`
+	Images      []AssetRef `json:"images,omitempty"`
+	Diagrams    []AssetRef `json:"diagrams,omitempty"`
+	Attachments []AssetRef `json:"attachments,omitempty"`
 	// BodyFormat records the source format of raw.html: "storage" (Confluence
 	// Storage Format, API crawl) or "rendered" (browser fallback). Used to route
 	// reindex/import to the right converter.
@@ -31,7 +35,13 @@ type Metadata struct {
 
 type AssetRef struct {
 	OriginalURL string `json:"original_url"`
-	LocalPath   string `json:"local_path"`
+	// LocalPath is relative to the page directory; empty when the file was
+	// not downloaded (over the size limit, or the download failed).
+	LocalPath string `json:"local_path"`
+	// Name, MediaType and Size describe page attachments (files).
+	Name      string `json:"name,omitempty"`
+	MediaType string `json:"media_type,omitempty"`
+	Size      int64  `json:"size,omitempty"`
 }
 
 type Writer struct {

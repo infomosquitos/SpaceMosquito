@@ -29,9 +29,12 @@ type Page struct {
 	MetadataPath       string    `db:"metadata_path"`
 	FileDir            string    `db:"file_dir"`
 	// BodyFormat is "storage" (CSF/API) or "rendered" (browser HTML). Empty until backfill/save.
-	BodyFormat string    `db:"body_format"`
-	CreatedAt  time.Time `db:"created_at"`
-	UpdatedAt  time.Time `db:"updated_at"`
+	BodyFormat string `db:"body_format"`
+	// History is the page's Confluence authorship; CreatedAt/UpdatedAt above
+	// are the local save times.
+	History   PageHistory
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
 // BodyFormatCounts is the CSF vs HTML split for pages in a space.
@@ -51,6 +54,20 @@ type PageSummary struct {
 	UpdatedAt          time.Time `db:"updated_at"`
 }
 
+// PageHistory is who created and last updated a page in Confluence, and
+// when. Empty names and nil times mean unknown (e.g. browser-fallback pages).
+type PageHistory struct {
+	CreatedBy string     `db:"confluence_created_by" json:"created_by,omitempty"`
+	CreatedAt *time.Time `db:"confluence_created_at" json:"created_at,omitempty"`
+	UpdatedBy string     `db:"confluence_updated_by" json:"updated_by,omitempty"`
+	UpdatedAt *time.Time `db:"confluence_updated_at" json:"updated_at,omitempty"`
+}
+
+// IsZero reports whether nothing is known.
+func (h PageHistory) IsZero() bool {
+	return h.CreatedBy == "" && h.CreatedAt == nil && h.UpdatedBy == "" && h.UpdatedAt == nil
+}
+
 type SearchResult struct {
 	ConfluenceID int       `db:"confluence_id"`
 	SpaceKey     string    `db:"space_key"`
@@ -59,6 +76,9 @@ type SearchResult struct {
 	Similarity   float64   `db:"similarity"`
 	FilePath     string    `db:"file_path"`
 	InternalID   uuid.UUID `db:"internal_id"`
+	// UpdatedBy/UpdatedAt: last Confluence update (PageHistory), if known.
+	UpdatedBy string
+	UpdatedAt *time.Time
 }
 
 type PageStats struct {

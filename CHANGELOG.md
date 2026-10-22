@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Page attachments are saved: crawls download each page's files (pptx, pdf, xlsx, docx, …) into `assets/attachments/` and list them in `metadata.json`. File previews and attachment links on the page link the local copy (PDFs show inline in browse; Office files download), the attachments macro lists the files, and every page shows an **Attachments** section. Files over `storage.max_attachment_mb` (default 100) are linked to Confluence instead. Pages saved before need `crawl --force` once (adding an attachment does not change the page version).
+- Page authorship from Confluence: who created and last updated each page, and when. Shown as a byline under the page title in browse, saved in `metadata.json` (`author`, `created_at`, `updated_by`, `updated_at`; previously empty or the local save time), and returned as `history` by MCP/REST search and `get_page`. The next crawl fills it in for every page, including unchanged pages it skips; no `crawl --force` needed.
+
+### Changed
+- Wide tables on saved pages use the full width next to the sidebar (text keeps a readable width), and URLs in cells wrap instead of widening their column. Tables that are still too wide scroll sideways, with a shadow on the edge that hides more columns.
+
+### Fixed
+- Decision lists and panels from Confluence's newer editor no longer show internal IDs (e.g. `d7a0fb66-…05e99ba7-…DECIDED`) in saved pages: decisions render as **Decision:** items and panels as callouts. Run `spacemosquito reindex --content` to fix saved pages (no crawl needed).
+- `reindex --content` only writes inside the configured catalog; with a copied or moved catalog it no longer rewrites `content.md` in the folders recorded in the database.
+
 ## [0.8.0] - 2026-10-22
 
 ### Changed
