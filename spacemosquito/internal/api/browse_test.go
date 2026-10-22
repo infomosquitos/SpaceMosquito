@@ -80,3 +80,18 @@ func TestSpaceBrowsePath(t *testing.T) {
 		t.Fatalf("got %q", got)
 	}
 }
+
+func TestPageBrowsePath(t *testing.T) {
+	base := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(base, "TST", "10-Data mapping > X"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// Recorded path from another machine: only the page dir name is used.
+	got := PageBrowsePath(base, "TST", "/old/home/saved/TST/10-Data mapping > X/index.html")
+	if got != "/browse/TST/10-Data%20mapping%20%3E%20X/" {
+		t.Fatalf("got %q", got)
+	}
+	if got := PageBrowsePath(base, "TST", "/x/TST/99-Missing/index.html"); got != "" {
+		t.Fatalf("missing dir: got %q", got)
+	}
+}

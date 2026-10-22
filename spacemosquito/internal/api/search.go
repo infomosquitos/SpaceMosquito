@@ -60,6 +60,15 @@ func (h *SearchHandler) Search(w http.ResponseWriter, r *http.Request) {
 	}
 
 	hits := search.ToSearchHits(results, h.cfg.MCP.ExposeInternalIDs)
+	// highlight=1 keeps search.MatchStart/MatchEnd around matched terms in
+	// excerpts (used by the browse UI).
+	highlight := r.URL.Query().Get("highlight") == "1"
+	for i := range hits {
+		if highlight {
+			hits[i].Excerpt = search.HighlightedExcerpt(results[i].Excerpt, search.DefaultExcerptMaxRunes)
+		}
+		hits[i].BrowseURL = PageBrowsePath(h.cfg.Storage.BasePath, hits[i].SpaceKey, hits[i].FilePath)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"query":   query,

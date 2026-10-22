@@ -96,6 +96,8 @@ Catalog navigation (`saved/index.{html,md}`, `saved/<SPACE>/index.{html,md}`) is
 
 `serve` exposes the catalog read-only at `GET /browse/` (no directory listings; folders only via their `index.html`). `GET /api/spaces` reports `browse_path` (e.g. `/browse/KEY/`) once a space index exists; the extension's Spaces tab shows a 📖 button for it. Browsers do not let extensions open `file://` pages, hence the HTTP route.
 
+Served index pages also show a content search box calling `GET /api/search` (hidden for `file://`). REST search adds `browse_url` per hit and, with `highlight=1`, keeps match markers U+E000/U+E001 in `excerpt` (`search.MatchStart`/`MatchEnd`; stripped by default, so MCP/CLI output is unchanged). The page renders results with DOM `textContent` only.
+
 Regenerate existing catalogs after upgrade:
 
 ```sh

@@ -120,6 +120,36 @@ func TestREST_Search_returnsSeededPage(t *testing.T) {
 	}
 }
 
+func TestREST_Search_highlight(t *testing.T) {
+	ts, seed := bootSeededServer(t)
+
+	get := func(extra string) []search.SearchHit {
+		t.Helper()
+		var resp struct {
+			Results []search.SearchHit `json:"results"`
+		}
+		if code := testutil.GETJSON(t, nil, ts.URL+"/api/search?q="+seed.SearchTerm+extra, &resp); code != http.StatusOK {
+			t.Fatalf("status = %d", code)
+		}
+		if len(resp.Results) == 0 {
+			t.Fatal("no results")
+		}
+		return resp.Results
+	}
+	for _, hit := range get("") {
+		if strings.ContainsAny(hit.Excerpt, search.MatchStart+search.MatchEnd) {
+			t.Fatalf("default excerpt leaks match markers: %q", hit.Excerpt)
+		}
+	}
+	marked := false
+	for _, hit := range get("&highlight=1") {
+		marked = marked || strings.Contains(hit.Excerpt, search.MatchStart)
+	}
+	if !marked {
+		t.Fatal("highlight=1 excerpts carry no match markers")
+	}
+}
+
 func TestREST_Search_spaceFilter(t *testing.T) {
 	ts, seed := bootSeededServer(t)
 

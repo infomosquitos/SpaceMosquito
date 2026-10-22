@@ -320,7 +320,90 @@ ul.tree li { margin: 2px 0; }
 summary { cursor: pointer; }
 li.leaf { padding-left: 1.1em; }
 .hidden { display: none; }
+#content-search { margin-bottom: 16px; }
+#search-results { padding-left: 20px; margin: 0; }
+#search-results li { margin-bottom: 8px; }
+.excerpt { margin: 2px 0 0; font-size: 13px; opacity: .85; }
 `
+
+// searchSection is the full-text content search, called with the space key
+// ("" searches all spaces). It needs the backend (/api/search, the same FTS
+// as MCP), so it stays hidden when an index is opened as a file:// page.
+// Results are built with DOM APIs (textContent), never innerHTML.
+const searchSection = `{{define "search"}}<section id="content-search" class="hidden" data-space="{{.}}">
+<input type="search" id="search" placeholder="Search page content{{if .}} in this space{{end}}…" aria-label="Search page content">
+<p id="search-status" class="meta"></p>
+<ol id="search-results"></ol>
+</section>
+<script>
+(function () {
+  if (!/^https?:$/.test(location.protocol)) return;
+  var box = document.getElementById("content-search");
+  var input = document.getElementById("search");
+  var list = document.getElementById("search-results");
+  var status = document.getElementById("search-status");
+  var space = box.getAttribute("data-space");
+  var timer = null, seq = 0;
+  box.classList.remove("hidden");
+  input.addEventListener("input", function () {
+    clearTimeout(timer);
+    timer = setTimeout(run, 250);
+  });
+  function run() {
+    var q = input.value.trim(), my = ++seq;
+    list.textContent = "";
+    status.textContent = "";
+    if (q.length < 2) return;
+    var url = "/api/search?highlight=1&limit=20&q=" + encodeURIComponent(q) +
+      (space ? "&space_key=" + encodeURIComponent(space) : "");
+    fetch(url).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    }).then(function (data) {
+      if (my !== seq) return;
+      var hits = data.results || [];
+      if (!hits.length) status.textContent = "No pages contain all of these words.";
+      hits.forEach(function (h) {
+        var li = document.createElement("li");
+        var linked = typeof h.browse_url === "string" && h.browse_url.indexOf("/browse/") === 0;
+        var title = document.createElement(linked ? "a" : "span");
+        if (linked) title.href = h.browse_url;
+        title.textContent = h.title;
+        li.appendChild(title);
+        if (!space) {
+          var key = document.createElement("span");
+          key.className = "meta";
+          key.textContent = " · " + h.space_key;
+          li.appendChild(key);
+        }
+        if (h.excerpt) {
+          var p = document.createElement("p");
+          p.className = "excerpt";
+          appendMarked(p, h.excerpt);
+          li.appendChild(p);
+        }
+        list.appendChild(li);
+      });
+    }).catch(function () {
+      if (my === seq) status.textContent = "Content search is unavailable. Is spacemosquito serve running?";
+    });
+  }
+  // Excerpts wrap matches in U+E000 … U+E001 (search.MatchStart/MatchEnd).
+  function appendMarked(el, s) {
+    s.split("\uE000").forEach(function (part, i) {
+      var end = part.indexOf("\uE001");
+      if (i === 0 || end < 0) {
+        el.appendChild(document.createTextNode(part.replace(/\uE001/g, "")));
+        return;
+      }
+      var m = document.createElement("mark");
+      m.textContent = part.slice(0, end);
+      el.appendChild(m);
+      el.appendChild(document.createTextNode(part.slice(end + 1)));
+    });
+  }
+})();
+</script>{{end}}`
 
 var spaceTemplate = template.Must(template.New("space").Funcs(funcs).Parse(`<!doctype html>
 <html lang="en">
@@ -336,7 +419,8 @@ var spaceTemplate = template.Must(template.New("space").Funcs(funcs).Parse(`<!do
 <h1>{{heading .Key .Name}}</h1>
 <p class="meta">{{.Pages}} pages{{crawled .LastCrawled}}</p>
 </header>
-<input type="search" id="filter" placeholder="Filter pages by title…" autofocus>
+{{template "search" .Key}}
+<input type="search" id="filter" placeholder="Filter pages by title…" aria-label="Filter pages by title" autofocus>
 <ul class="tree" id="tree">
 {{template "nodes" .Roots}}
 </ul>
@@ -359,7 +443,7 @@ var spaceTemplate = template.Must(template.New("space").Funcs(funcs).Parse(`<!do
 {{define "nodes"}}{{range .}}<li{{if not .Children}} class="leaf"{{end}}>{{if .Children}}<details><summary><a href="{{href .Dir "index.html"}}">{{.Title}}</a></summary><ul>
 {{template "nodes" .Children}}</ul></details>{{else}}<a href="{{href .Dir "index.html"}}">{{.Title}}</a>{{end}}</li>
 {{end}}{{end}}
-`))
+` + searchSection))
 
 var rootTemplate = template.Must(template.New("root").Funcs(funcs).Parse(`<!doctype html>
 <html lang="en">
@@ -373,9 +457,10 @@ var rootTemplate = template.Must(template.New("root").Funcs(funcs).Parse(`<!doct
 <header>
 <h1>SpaceMosquito catalog</h1>
 </header>
-{{if .}}<ul>
+{{if .}}{{template "search" ""}}
+<ul>
 {{range .}}<li><a href="{{href .Key "index.html"}}">{{heading .Key .Name}}</a> <span class="meta">— {{.Pages}} pages{{crawled .LastCrawled}}</span></li>
 {{end}}</ul>{{else}}<p>No spaces saved yet.</p>{{end}}
 </body>
 </html>
-`))
+` + searchSection))

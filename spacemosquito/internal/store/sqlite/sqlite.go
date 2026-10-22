@@ -493,7 +493,7 @@ func (d *DB) searchPagesFTS(ctx context.Context, query, spaceKey string, limit i
 	ftsQuery := buildFTSQuery(query)
 	baseQuery := `
 		SELECT p.confluence_id, s.key, p.title,
-		       snippet(pages_fts, 2, '', '', '...', 20) AS excerpt,
+		       snippet(pages_fts, 2, char(57344), char(57345), '...', 20) AS excerpt, -- U+E000/U+E001: search.MatchStart/MatchEnd
 		       bm25(pages_fts, 0.0, 10.0, 1.0) AS similarity,
 		       p.html_path, p.id
 		FROM pages_fts

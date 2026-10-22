@@ -16,6 +16,8 @@ type SearchHit struct {
 	Similarity   float64 `json:"similarity"`
 	FilePath     string  `json:"file_path,omitempty"`
 	InternalID   string  `json:"internal_id,omitempty"`
+	// BrowseURL is the page's path in the served catalog (REST only).
+	BrowseURL string `json:"browse_url,omitempty"`
 }
 
 // PageDetail is the public full-page shape for MCP get_page.

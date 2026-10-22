@@ -120,6 +120,8 @@ func TestWriteSpace(t *testing.T) {
 		`<a href="10-Home/index.html">Home</a>`,
 		`<a href="11-Data%20mapping%20iFlow%20%3E%20%5BCommerce%5D/index.html">Data mapping iFlow &gt; [Commerce]</a>`,
 		`2 pages`,
+		`<section id="content-search" class="hidden" data-space="TST">`,
+		`Search page content in this space`,
 	} {
 		if !strings.Contains(spaceHTML, want) {
 			t.Errorf("space index.html missing %q:\n%s", want, spaceHTML)
@@ -144,6 +146,9 @@ func TestWriteSpace(t *testing.T) {
 		}
 	}
 	rootHTML := read(filepath.Join(saved, "index.html"))
+	if !strings.Contains(rootHTML, `<section id="content-search" class="hidden" data-space="">`) {
+		t.Errorf("root index.html lacks all-spaces search:\n%s", rootHTML)
+	}
 	if !strings.Contains(rootHTML, `<a href="TST/index.html">Test Space (TST)</a>`) {
 		t.Errorf("root index.html:\n%s", rootHTML)
 	}

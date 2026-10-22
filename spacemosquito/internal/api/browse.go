@@ -42,3 +42,18 @@ func SpaceBrowsePath(savedBase, spaceKey string) string {
 	}
 	return BrowsePrefix + url.PathEscape(spaceKey) + "/"
 }
+
+// PageBrowsePath returns the catalog URL path of a saved page given its
+// recorded html_path (only the page directory name is trusted, as the
+// catalog may have moved), or "" when the page directory is not under
+// savedBase/spaceKey.
+func PageBrowsePath(savedBase, spaceKey, htmlPath string) string {
+	if savedBase == "" || spaceKey == "" || htmlPath == "" {
+		return ""
+	}
+	dir := filepath.Base(filepath.Dir(htmlPath))
+	if st, err := os.Stat(filepath.Join(savedBase, spaceKey, dir)); err != nil || !st.IsDir() {
+		return ""
+	}
+	return BrowsePrefix + url.PathEscape(spaceKey) + "/" + url.PathEscape(dir) + "/"
+}

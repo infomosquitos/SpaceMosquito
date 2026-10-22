@@ -49,3 +49,13 @@ func TestNormalizeExcerpt_shortUnchanged(t *testing.T) {
 		t.Errorf("got %q", got)
 	}
 }
+
+func TestExcerptMatchMarkers(t *testing.T) {
+	raw := "the " + MatchStart + "mosquito" + MatchEnd + "   flies"
+	if got := NormalizeExcerpt(raw, 0); got != "the mosquito flies" {
+		t.Fatalf("NormalizeExcerpt = %q, markers must be stripped", got)
+	}
+	if got := HighlightedExcerpt(raw, 0); got != "the "+MatchStart+"mosquito"+MatchEnd+" flies" {
+		t.Fatalf("HighlightedExcerpt = %q", got)
+	}
+}
