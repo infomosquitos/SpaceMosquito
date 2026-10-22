@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Info, Note and Tip panels on saved pages show as light blue boxes and Warning panels as light rose boxes (darker shades in dark mode), like Confluence's panels.
 
 ### Fixed
+- Emoji stored as escaped codes (e.g. `\uD83D\uDCD8` for 📘) or as Atlassian names (`:check_mark:`, `:info:`, `:question_mark:`, `:warning:`, `:light_bulb_on:`) show as emoji; unknown names are left out instead of shown as text.
+- Smart links shown as cards in Confluence are separated from the following word ("…SAPCC for" instead of "…SAPCCfor").
 - Words no longer run together around bold, italic, links and inline code when Confluence keeps the space inside the formatting (e.g. `Define<strong> data loading </strong>for` became `Define**data loading**for`). Run `spacemosquito reindex --content` to fix saved pages.
 
 ## [0.8.2] - 2026-10-22

@@ -3,8 +3,11 @@ package csf
 import (
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/PuerkitoBio/goquery"
+	"golang.org/x/net/html"
 )
 
 // linkRule renders ac:link into Markdown. The label comes from ac:link-body
@@ -67,7 +70,34 @@ func (linkRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, erro
 		}
 		return true
 	})
+	if out != "" && sel.AttrOr("ac:card-appearance", "") != "" {
+		out = separateCard(sel, out)
+	}
 	return out, nil
+}
+
+// separateCard adds a space between a smart link and adjacent text. Confluence
+// shows such links as cards (inline chips), so the source often has no space
+// around them: <ac:link>…SAPCC</ac:link>for SAP.
+func separateCard(sel *goquery.Selection, out string) string {
+	n := sel.Get(0)
+	if next := n.NextSibling; next != nil && next.Type == html.TextNode && startsWord(next.Data) {
+		out += " "
+	}
+	if prev := n.PrevSibling; prev != nil && prev.Type == html.TextNode && endsWord(prev.Data) {
+		out = " " + out
+	}
+	return out
+}
+
+func startsWord(s string) bool {
+	r, _ := utf8.DecodeRuneInString(s)
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
+func endsWord(s string) bool {
+	r, _ := utf8.DecodeLastRuneInString(s)
+	return unicode.IsLetter(r) || unicode.IsDigit(r)
 }
 
 // linkLabel extracts the link label from a body element. It searches

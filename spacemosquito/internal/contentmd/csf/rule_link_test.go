@@ -43,3 +43,18 @@ func TestLink_attachmentLabelFromFilename(t *testing.T) {
 		t.Fatalf("attachment filename missing: %q", got)
 	}
 }
+
+// Smart links render as cards in Confluence, so the source often has no
+// space around them.
+func TestLink_cardSeparatedFromWords(t *testing.T) {
+	in := `<p>please use<ac:link ac:card-appearance="inline"><ri:page ri:content-title="Setup - SAPCC" /><ac:link-body>Setup - SAPCC</ac:link-body></ac:link>for SAP, (<ac:link ac:card-appearance="inline"><ri:page ri:content-title="X" /></ac:link>).</p>`
+	got, _ := convert(t, in, nil)
+	if want := "please use Setup - SAPCC for SAP, (X)."; strings.TrimSpace(got) != want {
+		t.Errorf("got %q, want %q", strings.TrimSpace(got), want)
+	}
+	// Ordinary links keep the source spacing.
+	got, _ = convert(t, `<p>a<ac:link><ri:page ri:content-title="P" /></ac:link>b</p>`, nil)
+	if strings.TrimSpace(got) != "aPb" {
+		t.Errorf("plain link: %q", got)
+	}
+}
