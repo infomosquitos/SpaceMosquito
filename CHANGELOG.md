@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-10-22
+
 ### Added
 - Page attachments are saved: crawls download each page's files (pptx, pdf, xlsx, docx, …) into `assets/attachments/` and list them in `metadata.json`. File previews and attachment links on the page link the local copy (PDFs show inline in browse; Office files download), the attachments macro lists the files, and every page shows an **Attachments** section. Files over `storage.max_attachment_mb` (default 100) are linked to Confluence instead. Pages saved before need `crawl --force` once (adding an attachment does not change the page version).
 - Page authorship from Confluence: who created and last updated each page, and when. Shown as a byline under the page title in browse, saved in `metadata.json` (`author`, `created_at`, `updated_by`, `updated_at`; previously empty or the local save time), and returned as `history` by MCP/REST search and `get_page`. The next crawl fills it in for every page, including unchanged pages it skips; no `crawl --force` needed.
