@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4] - 2026-10-22
+
 ### Fixed
 - Jira issue macros link to the issue again on Confluence Cloud (`JIRA: [CCP-658](https://<site>.atlassian.net/browse/CCP-658)`); Jira query macros link to the matching issue search. Server/Data Center keeps the plain key (the Jira URL is unknown there).
 - `reindex --content` keeps attachment links (file previews, attachment links, the attachments list) and Jira links: it now rebuilds the page context from `metadata.json` instead of converting without it.
