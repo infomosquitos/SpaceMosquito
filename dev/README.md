@@ -76,6 +76,14 @@ Crawls and imports store page body text as **Markdown** (`content.md` on disk, `
 index.html  →  contentmd.HTMLToMarkdown()  →  content.md + pages.content  →  FTS
 ```
 
+API crawls (Confluence Storage Format) go the other way for `index.html`:
+
+```
+raw.html (CSF)  →  csf.CSFToMarkdown()  →  content.md  →  contentmd.MarkdownToHTML()  →  index.html
+```
+
+Catalog navigation (`saved/index.{html,md}`, `saved/<SPACE>/index.{html,md}`) is rebuilt from the DB page tree by `catalogindex` at the end of `crawl` / `crawl-page` and in `reindex --content`.
+
 Regenerate existing catalogs after upgrade:
 
 ```sh

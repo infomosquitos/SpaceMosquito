@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-rod/rod"
 	"github.com/go-rod/rod/lib/proto"
+	"github.com/vkh/spacemosquito/internal/catalogindex"
 	"github.com/vkh/spacemosquito/internal/config"
 	"github.com/vkh/spacemosquito/internal/confluence"
 	"github.com/vkh/spacemosquito/internal/contentmd"
@@ -244,6 +245,7 @@ func (s *Scraper) CrawlPage(spaceKey string, confluenceID int, sess *session.Ses
 	if err := s.ScrapePageAPI(pg, spaceKey, spaceURL, sess); err != nil {
 		return err
 	}
+	s.writeCatalogIndex(spaceKey)
 
 	if s.log.Enabled() {
 		s.log.Infow("crawl-page completed",
@@ -436,8 +438,17 @@ func (s *Scraper) CrawlSpace(spaceURL string, sess *session.Session) error {
 	}
 
 	reconcileSpacePagesTotal(s.ctx, s.db, pageInfo.SpaceKey, len(pageInfo.Pages), s.log)
+	s.writeCatalogIndex(pageInfo.SpaceKey)
 
 	return nil
+}
+
+// writeCatalogIndex rebuilds the space page tree and root catalog index
+// (best-effort: a failure leaves the previous index and is only logged).
+func (s *Scraper) writeCatalogIndex(spaceKey string) {
+	if err := catalogindex.WriteSpace(s.ctx, s.db, s.storage.BasePath(), spaceKey); err != nil {
+		s.log.Warnw("failed to write catalog index", "space_key", spaceKey, "error", err)
+	}
 }
 
 // ScrapePageAPI fetches page content using the REST API.
@@ -586,11 +597,6 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 		pg.FileDir = dir
 	}
 
-	if err := s.storage.SaveHTML(dir, pg.CleanHTML); err != nil {
-		return fmt.Errorf("save clean html: %w", err)
-	}
-	pg.HTMLPath = dir + "/index.html"
-
 	contentMD, assets, err := s.renderMarkdown(pg, spaceURL, cloud)
 	if err != nil {
 		return fmt.Errorf("convert content markdown: %w", err)
@@ -598,6 +604,18 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 	if err := s.storage.SaveMarkdown(dir, contentMD); err != nil {
 		return fmt.Errorf("save content markdown: %w", err)
 	}
+
+	// Browsers cannot display Storage Format, so CSF pages get index.html
+	// rendered from content.md (which links downloaded assets locally);
+	// browser-fallback pages keep their extracted HTML.
+	if csf.IsStorageFormat(pg.RawHTML) {
+		if err := contentmd.WriteIndexHTML(dir, pg.Title, pg.URL, contentMD); err != nil {
+			return fmt.Errorf("save index html: %w", err)
+		}
+	} else if err := s.storage.SaveHTML(dir, pg.CleanHTML); err != nil {
+		return fmt.Errorf("save clean html: %w", err)
+	}
+	pg.HTMLPath = dir + "/index.html"
 
 	// CSF conversion schedules asset downloads (images, diagrams); fetch them
 	// into the page dir and record them alongside any HTML-path images.

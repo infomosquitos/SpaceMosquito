@@ -104,6 +104,11 @@ func renderList(sel *goquery.Selection, ctx *RenderContext) string {
 
 	var lines []string
 	idx := 0
+	// Confluence splits numbered steps around other content into separate
+	// lists continued via <ol start="N">.
+	if start, err := strconv.Atoi(sel.AttrOr("start", "")); ordered && err == nil && start > 0 {
+		idx = start - 1
+	}
 	sel.Children().Each(func(_ int, li *goquery.Selection) {
 		if tagName(li) != "li" {
 			return

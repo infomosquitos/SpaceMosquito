@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/vkh/spacemosquito/internal/app"
 	"github.com/vkh/spacemosquito/internal/bootstrap"
+	"github.com/vkh/spacemosquito/internal/catalogindex"
 	"github.com/vkh/spacemosquito/internal/config"
 	"github.com/vkh/spacemosquito/internal/contentmd"
 	"github.com/vkh/spacemosquito/internal/datastore"
@@ -566,6 +568,11 @@ func runReindex(cfg *config.Config, withContent bool, log *zap.Logger) {
 		for _, e := range result.Errors {
 			fmt.Fprintf(os.Stderr, "  error: %s\n", e)
 		}
+		if err := catalogindex.WriteAll(ctx, database, savedBase); err != nil {
+			sugar.Errorw("catalog index failed", "error", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Catalog index written: %s\n", filepath.Join(savedBase, "index.html"))
 	}
 
 	if err := database.IndexAllPageContents(ctx); err != nil {

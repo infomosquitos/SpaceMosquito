@@ -17,7 +17,8 @@ type ReindexResult struct {
 	Errors  []string
 }
 
-// ReindexAll regenerates content.md and pages.content from saved index.html files.
+// ReindexAll regenerates content.md and pages.content from saved page files,
+// and index.html for Storage Format pages (see RefreshDirIndexHTML).
 func ReindexAll(ctx context.Context, db store.Store, savedBase string) (ReindexResult, error) {
 	pages, err := db.ListAllPages(ctx)
 	if err != nil {
@@ -54,6 +55,9 @@ func ReindexAll(ctx context.Context, db store.Store, savedBase string) (ReindexR
 
 		if err := WriteFile(dir, md); err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: write content.md: %v", dir, err))
+		}
+		if _, err := RefreshDirIndexHTML(dir, md); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: write index.html: %v", dir, err))
 		}
 
 		page.Content = md

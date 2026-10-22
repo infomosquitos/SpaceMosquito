@@ -55,6 +55,13 @@ func TestHTML_orderedList(t *testing.T) {
 	}
 }
 
+func TestHTML_orderedListStart(t *testing.T) {
+	got := md(t, `<ol start="2"><li>second</li><li>third</li></ol>`)
+	if !strings.Contains(got, "2. second") || !strings.Contains(got, "3. third") {
+		t.Fatalf("ol start not honored: %q", got)
+	}
+}
+
 func TestHTML_nestedList(t *testing.T) {
 	got := md(t, `<ul><li>parent<ul><li>child</li></ul></li></ul>`)
 	if !strings.Contains(got, "- parent") {

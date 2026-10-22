@@ -72,6 +72,8 @@ Page **content** is stored as Markdown (`content.md` on disk, `pages.content` in
 
 `reindex --content` re-converts each saved page from the right source — Storage Format (`raw.html`) through the CSF converter, rendered HTML (`index.html`) through the generic one — routing by the `body_format` recorded in `metadata.json` (or a content sniff for older pages). It regenerates Markdown offline; image/diagram **assets** are (re)downloaded on the next crawl.
 
+Browse the catalog offline from `~/.spacemosquito/saved/index.html` (spaces → page tree with a title filter → pages); `index.md` files hold the same tree for Markdown viewers and agents. Open a page's `index.html` to browse it offline with images. For API-crawled pages it is rendered from `content.md`; `raw.html` is the original Confluence source and is not meant for viewing in a browser. Run `reindex --content` once to regenerate `index.html` and the catalog index for pages saved by older versions.
+
 ```sh
 ./spacemosquito search "your query"
 ./spacemosquito search "your query" SPACEKEY

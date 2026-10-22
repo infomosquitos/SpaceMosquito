@@ -43,6 +43,11 @@ func NewWriter(basePath string, log logging.Sugar) *Writer {
 	return &Writer{basePath: basePath, log: log}
 }
 
+// BasePath is the saved catalog root (pages live under {base}/{spaceKey}/).
+func (w *Writer) BasePath() string {
+	return w.basePath
+}
+
 func (w *Writer) MakePageDir(spaceKey, pageTitle string, confluenceID int) (string, error) {
 	// {id}-{title}: ID first so it is never truncated; title is sanitized/capped at 100.
 	safeTitle := sanitizeFilename(pageTitle)

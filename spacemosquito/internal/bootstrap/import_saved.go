@@ -241,6 +241,7 @@ func parseRecord(metaPath string) (importRecord, string, error) {
 	rec.content = content
 	if strings.TrimSpace(content) != "" {
 		_ = contentmd.WriteFile(rec.fileDir, content)
+		_, _ = contentmd.RefreshDirIndexHTML(rec.fileDir, content)
 	}
 
 	return rec, "", nil

@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Homebrew install on macOS: `brew install --cask infomosquitos/tap/spacemosquito`.
+- Offline catalog navigation: `saved/index.html` lists spaces, each space gets an `index.html` page tree with a title filter (plus `index.md` versions), and pages link back to their space. Built after each crawl and by `reindex --content`.
+
+### Fixed
+- Saved `index.html` for API-crawled pages now opens in a browser with images, diagrams, code blocks and tables (was raw Confluence markup). Run `spacemosquito reindex --content` to fix existing pages.
+- Numbered lists that Confluence continues after other content (e.g. step 2 after a screenshot) keep their numbering in `content.md`.
 
 ### Changed
 - HTTP request start/complete logs are **debug** (was info) to reduce spam.
