@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vkh/spacemosquito/internal/contentmd/csf"
 	"github.com/vkh/spacemosquito/internal/ratelimit"
 	"github.com/vkh/spacemosquito/internal/session"
 )
@@ -22,7 +23,9 @@ type userCache struct {
 	names  map[string]string
 }
 
-var mentionAccountID = regexp.MustCompile(`<ri:user\b[^>]*\bri:account-id="([^"]+)"`)
+// mentionAccountID finds mentioned accounts: ri:account-id, or ri:userkey
+// holding an account ID (pages from before Cloud).
+var mentionAccountID = regexp.MustCompile(`<ri:user\b[^>]*\bri:(account-id|userkey)="([^"]+)"`)
 
 // userName returns a known display name ("" = unknown).
 func (s *Scraper) userName(accountID string) string {
@@ -75,7 +78,11 @@ func (s *Scraper) resolveMentions(baseURL, storageHTML string, sess *session.Ses
 	var missing []string
 	seen := map[string]bool{}
 	for _, m := range mentionAccountID.FindAllStringSubmatch(storageHTML, -1) {
-		if id := m[1]; !seen[id] && s.userName(id) == "" {
+		id := m[2]
+		if m[1] == "userkey" && !csf.IsAccountID(id) {
+			continue // Server/DC user key, not a Cloud account
+		}
+		if !seen[id] && s.userName(id) == "" {
 			seen[id] = true
 			missing = append(missing, id)
 		}

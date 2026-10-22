@@ -71,3 +71,21 @@ func TestLink_cloudMention(t *testing.T) {
 		t.Errorf("no names: %q", got)
 	}
 }
+
+// Older pages keep the account ID as ri:userkey.
+func TestLink_mentionUserKeyAccountID(t *testing.T) {
+	in := `<ul><li><p><ac:link><ri:user ri:userkey="712020:43929ea0-bde0-4d06-96a9-bb3ede102937" /></ac:link></p></li><li><p><ac:link><ri:user ri:userkey="ff8081815a3f4a2b015a3f4b6d1e0001" /></ac:link></p></li></ul>`
+	ctx := &RenderContext{UserName: func(id string) string {
+		return map[string]string{"712020:43929ea0-bde0-4d06-96a9-bb3ede102937": "Ann Larsen"}[id]
+	}}
+	got, _ := convert(t, in, ctx)
+	// A Server-style user key (32 hex) is not an account ID: kept as is.
+	if want := "- @Ann Larsen\n- @ff8081815a3f4a2b015a3f4b6d1e0001"; strings.TrimSpace(got) != want {
+		t.Errorf("got %q, want %q", strings.TrimSpace(got), want)
+	}
+	for id, want := range map[string]bool{"712020:43929ea0-bde0-4d06-96a9-bb3ede102937": true, "557058:9b673f74-cb0a-45d7-8cc7-0f1d10398cda": true, "5b10ac8d82e05b22cc7d4ef5": true, "jdoe": false, "ff8081815a3f4a2b015a3f4b6d1e0001": false} {
+		if IsAccountID(id) != want {
+			t.Errorf("IsAccountID(%q) = %v", id, !want)
+		}
+	}
+}

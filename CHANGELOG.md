@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- @-mentions on older pages, which store the account ID as `ri:userkey`, also show names (they showed `@712020:…`).
+
 ## [0.8.7] - 2026-10-22
 
 ### Fixed

@@ -29,7 +29,8 @@ func TestCrawlPage_mentionNames(t *testing.T) {
 			"body": map[string]any{"storage": map[string]any{"value": `<h2>Participants</h2><ul>` +
 				`<li><p><ac:link><ri:user ri:account-id="712020:ann" /></ac:link></p></li>` +
 				`<li><p><ac:link><ri:user ri:account-id="712020:bob" /></ac:link></p></li>` +
-				`<li><p><ac:link><ri:user ri:account-id="712020:gone" /></ac:link></p></li></ul>`}},
+				`<li><p><ac:link><ri:user ri:account-id="712020:gone" /></ac:link></p></li>` +
+				`<li><p><ac:link><ri:user ri:userkey="712020:43929ea0-bde0-4d06-96a9-bb3ede102937" /></ac:link></p></li></ul>`}},
 			"_links": map[string]any{"webui": "/spaces/PROJ/pages/60/MoM"},
 		})
 	})
@@ -38,7 +39,7 @@ func TestCrawlPage_mentionNames(t *testing.T) {
 	})
 	mux.HandleFunc("/wiki/rest/api/user/bulk", func(w http.ResponseWriter, r *http.Request) {
 		bulk = append(bulk, r.URL.Query()["accountId"]...)
-		_, _ = w.Write([]byte(`{"results":[{"accountId":"712020:ann","displayName":"Ann Larsen"}]}`))
+		_, _ = w.Write([]byte(`{"results":[{"accountId":"712020:ann","displayName":"Ann Larsen"},{"accountId":"712020:43929ea0-bde0-4d06-96a9-bb3ede102937","displayName":"Evariz P (Deactivated)"}]}`))
 	})
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
@@ -58,11 +59,11 @@ func TestCrawlPage_mentionNames(t *testing.T) {
 		t.Fatal(err)
 	}
 	md, _ := os.ReadFile(filepath.Join(got.FileDir, "content.md"))
-	if want := "- @Ann Larsen\n- @Bob\n- @unknown user"; !strings.Contains(string(md), want) {
+	if want := "- @Ann Larsen\n- @Bob\n- @unknown user\n- @Evariz P (Deactivated)"; !strings.Contains(string(md), want) {
 		t.Fatalf("content.md lacks %q:\n%s", want, md)
 	}
 	// Bob came from page history; only the unknown accounts were looked up.
-	if strings.Join(bulk, ",") != "712020:ann,712020:gone" {
+	if strings.Join(bulk, ",") != "712020:ann,712020:gone,712020:43929ea0-bde0-4d06-96a9-bb3ede102937" {
 		t.Fatalf("bulk lookup asked for %v", bulk)
 	}
 	names, _ := db.UserNames(ctx)

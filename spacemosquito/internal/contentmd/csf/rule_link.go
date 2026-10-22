@@ -2,6 +2,7 @@ package csf
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -100,7 +101,11 @@ func mention(ref *goquery.Selection, label string, ctx *RenderContext) string {
 	if label != "" {
 		return label
 	}
-	if id := ref.AttrOr("ri:account-id", ""); id != "" {
+	id := ref.AttrOr("ri:account-id", "")
+	if key := ref.AttrOr("ri:userkey", ""); id == "" && IsAccountID(key) {
+		id = key // pages from before Cloud keep the account ID as the user key
+	}
+	if id != "" {
 		if ctx != nil && ctx.UserName != nil {
 			if name := ctx.UserName(id); name != "" {
 				return "@" + name
@@ -113,6 +118,12 @@ func mention(ref *goquery.Selection, label string, ctx *RenderContext) string {
 	}
 	return ""
 }
+
+var accountIDPattern = regexp.MustCompile(`^(\d+:[0-9a-fA-F-]{36}|[0-9a-f]{24})$`)
+
+// IsAccountID reports whether s looks like a Confluence Cloud account ID
+// ("712020:<uuid>", or the older 24-character hex form).
+func IsAccountID(s string) bool { return accountIDPattern.MatchString(s) }
 
 // linkLabel extracts the link label from a body element. It searches
 // descendants (not just direct children) because a self-closing ri:* ref makes
