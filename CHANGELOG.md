@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.7] - 2026-10-22
+
 ### Fixed
 - @-mentions on Confluence Cloud show the person's name (`@Ann Larsen`) instead of nothing: crawls look up mentioned people once (bulk request, cached in the database; page authors are known for free) and `reindex --content` uses the cached names. Unknown accounts show as `@unknown user`.
 
