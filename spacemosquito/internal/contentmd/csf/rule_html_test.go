@@ -78,3 +78,21 @@ func TestHTML_horizontalRule(t *testing.T) {
 		t.Fatalf("hr not rendered: %q", got)
 	}
 }
+
+// Editors often put the space between words inside the formatting; it must
+// survive outside the Markdown markers instead of joining the words.
+func TestInline_edgeSpacesOutsideMarkers(t *testing.T) {
+	for _, tc := range []struct{ in, want string }{
+		{`<p>Define<strong> data loading methods </strong>for each source</p>`, "Define **data loading methods** for each source"},
+		{`<p>a<em> b</em>c</p>`, "a *b*c"},
+		{`<p>see<a href="https://x.example"> the docs </a>now</p>`, "see [the docs](https://x.example) now"},
+		{`<p>run<code> make </code>first</p>`, "run `make` first"},
+		{`<p>one<strong> </strong>two</p>`, "one two"},
+		{`<p>plain <strong>bold</strong> text</p>`, "plain **bold** text"},
+	} {
+		got, _ := convert(t, tc.in, nil)
+		if strings.TrimSpace(got) != tc.want {
+			t.Errorf("%s:\n got %q\nwant %q", tc.in, strings.TrimSpace(got), tc.want)
+		}
+	}
+}

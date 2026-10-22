@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Words no longer run together around bold, italic, links and inline code when Confluence keeps the space inside the formatting (e.g. `Define<strong> data loading </strong>for` became `Define**data loading**for`). Run `spacemosquito reindex --content` to fix saved pages.
+
 ## [0.8.2] - 2026-10-22
 
 ### Added

@@ -3,6 +3,7 @@ package csf
 import (
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/PuerkitoBio/goquery"
 	"golang.org/x/net/html"
@@ -62,36 +63,57 @@ func (htmlRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, erro
 	return ctx.RenderChildren(sel), nil
 }
 
-func wrapInline(inner, marker string) string {
-	inner = strings.TrimSpace(inner)
-	if inner == "" {
-		return ""
+// edgeSpaces splits s into its trimmed core and a single space for each side
+// that had whitespace. Editors often put the space between words inside the
+// formatting (`Define<strong> data </strong>for`); Markdown markers must hug
+// the text, so the space moves outside them instead of being lost.
+func edgeSpaces(s string) (lead, core, trail string) {
+	core = strings.TrimSpace(s)
+	if core == "" {
+		if s != "" {
+			return " ", "", ""
+		}
+		return "", "", ""
 	}
-	return marker + inner + marker
+	if strings.TrimLeftFunc(s, unicode.IsSpace) != s {
+		lead = " "
+	}
+	if strings.TrimRightFunc(s, unicode.IsSpace) != s {
+		trail = " "
+	}
+	return lead, core, trail
+}
+
+func wrapInline(inner, marker string) string {
+	lead, core, trail := edgeSpaces(inner)
+	if core == "" {
+		return lead
+	}
+	return lead + marker + core + marker + trail
 }
 
 func renderInlineCode(inner string) string {
-	inner = strings.TrimSpace(inner)
-	if inner == "" {
-		return ""
+	lead, core, trail := edgeSpaces(inner)
+	if core == "" {
+		return lead
 	}
 	// Use double backticks when the content itself contains a backtick.
-	if strings.Contains(inner, "`") {
-		return "`` " + inner + " ``"
+	if strings.Contains(core, "`") {
+		return lead + "`` " + core + " ``" + trail
 	}
-	return "`" + inner + "`"
+	return lead + "`" + core + "`" + trail
 }
 
 func renderAnchor(sel *goquery.Selection, ctx *RenderContext) string {
-	text := strings.TrimSpace(ctx.RenderChildren(sel))
+	lead, text, trail := edgeSpaces(ctx.RenderChildren(sel))
 	href := strings.TrimSpace(sel.AttrOr("href", ""))
 	if href == "" || href == "#" {
-		return text
+		return lead + text + trail
 	}
 	if text == "" {
 		text = href
 	}
-	return "[" + text + "](" + href + ")"
+	return lead + "[" + text + "](" + href + ")" + trail
 }
 
 // renderList renders a ul/ol as Markdown list lines, indented per nesting depth
