@@ -8,7 +8,7 @@ All state lives under `~/.spacemosquito/` (or a portable `--data-dir`).
 
 ## Install
 
-- **[Install](docs/INSTALL.md)** — download binary + Firefox XPI / Chrome zip from GitHub Releases
+- **[Install](docs/INSTALL.md)** — `brew install --cask infomosquitos/tap/spacemosquito` (macOS), or download binary + Firefox XPI / Chrome zip from GitHub Releases
 - **[Install from source](docs/INSTALL-FROM-SOURCE.md)** — build with Go and npm
 
 ## First run

@@ -115,7 +115,7 @@ CI:
 - [`go-test.yml`](../.github/workflows/go-test.yml) — `go test -race` (+ warn-only `govulncheck`)
 - [`extension-build.yml`](../.github/workflows/extension-build.yml) — `npm ci` + `npm run build` for both extensions
 - [`deps-audit.yml`](../.github/workflows/deps-audit.yml) — warn-only `govulncheck` + `npm audit --audit-level=high`
-- Release tags also package extensions (see [`release.yml`](../.github/workflows/release.yml))
+- Release tags also package extensions and update the Homebrew cask in [`infomosquitos/homebrew-tap`](https://github.com/infomosquitos/homebrew-tap) (see [`release.yml`](../.github/workflows/release.yml))
 
 ## Coming from Docker
 

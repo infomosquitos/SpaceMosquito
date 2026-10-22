@@ -132,3 +132,37 @@ jobs:
             dist/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  homebrew:
+    needs: release
+    # Pre-release tags (v1.2.3-rc1) do not update the tap.
+    if: ${{ !contains(github.ref_name, '-') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Download checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern SHA256SUMS --dir dist
+
+      - uses: actions/checkout@v7
+        with:
+          repository: infomosquitos/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update cask
+        run: |
+          mkdir -p homebrew-tap/Casks
+          ./scripts/render-homebrew-cask.sh "$GITHUB_REF_NAME" dist/SHA256SUMS > homebrew-tap/Casks/spacemosquito.rb
+          cd homebrew-tap
+          git add Casks/spacemosquito.rb
+          if git diff --cached --quiet; then
+            echo "Cask already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "spacemosquito ${GITHUB_REF_NAME#v}"
+          git push

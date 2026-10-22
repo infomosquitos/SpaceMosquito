@@ -7,6 +7,20 @@ Install SpaceMosquito from a [GitHub Release](https://github.com/infomosquitos/S
 - A release asset for your OS/arch (`spacemosquito-*`)
 - Firefox or Chrome (for the Space Mosquito extension)
 
+## Homebrew (macOS)
+
+```sh
+brew install --cask infomosquitos/tap/spacemosquito
+```
+
+Upgrade with `brew upgrade --cask spacemosquito`. Uninstall with
+`brew uninstall --cask spacemosquito`; add `--zap` to also delete
+`~/.spacemosquito` (catalog, config and encryption key).
+
+The cask installs the CLI binary only — install the
+[browser extension](#browser-extension) separately. Linux and Windows: use the
+binary below.
+
 ## Binary
 
 1. Download the binary for your platform and optionally `SHA256SUMS` from the release.

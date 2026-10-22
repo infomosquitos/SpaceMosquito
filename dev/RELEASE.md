@@ -14,6 +14,11 @@ Promote finished task artifacts with [CLEANUP.md](CLEANUP.md) first if needed (b
 5. Ensure GitHub repository secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` are set
    (AMO API credentials for signing the Firefox XPI). Without them the
    `build-extensions` job fails.
+6. Ensure GitHub repository secret `HOMEBREW_TAP_TOKEN` is set and not expired:
+   a fine-grained PAT (resource owner `infomosquitos`, repository
+   [`homebrew-tap`](https://github.com/infomosquitos/homebrew-tap) only,
+   **Contents: Read and write**). Without it the `homebrew` job fails after the
+   release is published; rotate it before it expires.
 
 ## Cut the release
 
@@ -24,7 +29,9 @@ git push origin vX.Y.Z
 
 Watch **Actions → Release**. It tests, builds four binaries + signed Firefox
 XPI + Chrome extension zip, uploads them + `SHA256SUMS`, and creates the GitHub
-Release for that tag.
+Release for that tag. Then the `homebrew` job renders `Casks/spacemosquito.rb`
+with [`scripts/render-homebrew-cask.sh`](../scripts/render-homebrew-cask.sh)
+and pushes it to the tap (skipped for pre-release tags containing `-`).
 
 Alternative: GitHub **Releases → Draft a new release → create tag `vX.Y.Z` → Publish**. That also pushes the tag and triggers the same workflow (assets attach to the release).
 
@@ -36,7 +43,10 @@ Alternative: GitHub **Releases → Draft a new release → create tag `vX.Y.Z` �
    - `SHA256SUMS` covering all of the above
 2. Spot-check: Firefox — install XPI via `about:addons` → Install Add-on From File.
    Chrome — unzip so `manifest.json` is at the archive root, then Load unpacked.
-3. Set [`STATUS.md`](STATUS.md) next focus (usually next backlog item).
+3. Confirm the tap commit `spacemosquito X.Y.Z` landed in
+   [`infomosquitos/homebrew-tap`](https://github.com/infomosquitos/homebrew-tap/commits),
+   then spot-check: `brew update && brew upgrade --cask spacemosquito && spacemosquito version`.
+4. Set [`STATUS.md`](STATUS.md) next focus (usually next backlog item).
 
 ## Local release artifacts (no GitHub)
 

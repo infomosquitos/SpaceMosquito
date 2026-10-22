@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Homebrew install on macOS: `brew install --cask infomosquitos/tap/spacemosquito`.
+
 ### Changed
 - HTTP request start/complete logs are **debug** (was info) to reduce spam.
 - **Breaking:** `GET /api/session/status` requires `?url=`; `POST /api/session/validate` requires `confluence_url`. Unknown `session.enc` payloads are rejected (delete the session and re-capture).
