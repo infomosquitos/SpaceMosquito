@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Update notice: `spacemosquito serve` (in the background, without delaying startup) and `spacemosquito version` check GitHub for a newer release at most once a day and print how to upgrade (`brew upgrade --cask spacemosquito && spacemosquito version` for Homebrew installs, otherwise the download link); other commands repeat the cached result on stderr. Off with `update_check: false` or `SPACEMOSQUITO_NO_UPDATE_CHECK=1`.
+
 ## [0.8.1] - 2026-10-22
 
 ### Added

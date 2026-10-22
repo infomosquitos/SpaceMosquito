@@ -45,6 +45,7 @@ func Run(args []string) int {
 
 	if args[1] == "version" || args[1] == "--version" {
 		fmt.Println(Version)
+		checkForUpdate(loadConfigQuietly())
 		return 0
 	}
 
@@ -75,6 +76,10 @@ func Run(args []string) int {
 	if err := paths.NormalizeConfig(cfg); err != nil {
 		fmt.Fprintf(os.Stderr, "failed to normalize config paths: %v\n", err)
 		return 1
+	}
+	if cmd != "serve" {
+		// No network here: show what the last check found.
+		printCachedUpdateNotice(cfg)
 	}
 
 	switch cmd {
@@ -431,6 +436,7 @@ func runServe(cfg *config.Config, log *zap.Logger) {
 	_ = cfg
 	_ = log
 	fmt.Println("Starting SpaceMosquito server...")
+	go checkForUpdate(cfg)
 	if err := app.Run(context.Background()); err != nil {
 		fmt.Fprintf(os.Stderr, "server error: %v\n", err)
 		os.Exit(1)

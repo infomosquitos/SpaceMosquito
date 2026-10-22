@@ -16,6 +16,14 @@ type Config struct {
 	Embedder EmbedderConfig `yaml:"embedder"`
 	MCP      MCPConfig      `yaml:"mcp"`
 	Cron     CronConfig     `yaml:"cron"`
+	// UpdateCheck: tell the user when a newer release is available (asks
+	// GitHub at most once a day). Default on; false disables.
+	UpdateCheck *bool `yaml:"update_check"`
+}
+
+// UpdateCheckEnabled reports whether the release update check may run.
+func (c *Config) UpdateCheckEnabled() bool {
+	return c == nil || c.UpdateCheck == nil || *c.UpdateCheck
 }
 
 // DatabaseConfig configures the embedded SQLite database.

@@ -3,6 +3,10 @@
 #
 # Data directory: ~/.spacemosquito/  (override with SPACEMOSQUITO_DATA_DIR or --data-dir)
 
+# Check GitHub for a newer release (at most once a day) and print how to
+# upgrade. Set to false to turn off (or SPACEMOSQUITO_NO_UPDATE_CHECK=1).
+# update_check: true
+
 database:
   driver: sqlite
   path: spacemosquito.db

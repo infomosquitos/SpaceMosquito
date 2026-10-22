@@ -11,6 +11,8 @@ All state lives under `~/.spacemosquito/` (or a portable `--data-dir`).
 - **[Install](docs/INSTALL.md)** — `brew install --cask infomosquitos/tap/spacemosquito` (macOS), or download binary + Firefox XPI / Chrome zip from GitHub Releases
 - **[Install from source](docs/INSTALL-FROM-SOURCE.md)** — build with Go and npm
 
+**Updates:** `spacemosquito serve` and `spacemosquito version` check GitHub for a newer release (at most once a day) and print how to upgrade, e.g. `brew upgrade --cask spacemosquito && spacemosquito version`; other commands repeat the last result without network access. Turn it off with `update_check: false` in `config.yaml` or `SPACEMOSQUITO_NO_UPDATE_CHECK=1`.
+
 ## First run
 
 ```sh
@@ -138,6 +140,7 @@ Import does **not** read PostgreSQL. If you only have a Postgres volume and no `
 | `SPACEMOSQUITO_DATA_DIR` | Data directory (default `~/.spacemosquito`) |
 | `CONFIG_PATH` | Config file path |
 | `CHROMIUM_PATH` | Override browser executable |
+| `SPACEMOSQUITO_NO_UPDATE_CHECK` | Any value: do not check GitHub for a newer release |
 
 ## Development
 
