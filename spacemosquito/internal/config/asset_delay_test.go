@@ -15,3 +15,15 @@ func TestStorageConfig_AssetDelay(t *testing.T) {
 		}
 	}
 }
+
+func TestServeLogFile(t *testing.T) {
+	empty, rel, abs := "", "my.log", "/var/log/sm.log"
+	for _, tc := range []struct {
+		v    *string
+		want string
+	}{{nil, "/data/logs/serve.log"}, {&empty, ""}, {&rel, "/data/my.log"}, {&abs, "/var/log/sm.log"}} {
+		if got := (&Config{LogFile: tc.v}).ServeLogFile("/data"); got != tc.want {
+			t.Errorf("log_file %v: %q, want %q", tc.v, got, tc.want)
+		}
+	}
+}

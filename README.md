@@ -11,6 +11,8 @@ All state lives under `~/.spacemosquito/` (or a portable `--data-dir`).
 - **[Install](docs/INSTALL.md)** — `brew install --cask infomosquitos/tap/spacemosquito` (macOS), or download binary + Firefox XPI / Chrome zip from GitHub Releases
 - **[Install from source](docs/INSTALL-FROM-SOURCE.md)** — build with Go and npm
 
+**Logs:** `spacemosquito serve` logs to the terminal and to `~/.spacemosquito/logs/serve.log` (rotated at 10 MB, 3 old files kept; set `log_file` in `config.yaml`, `""` for terminal only).
+
 **Updates:** `spacemosquito serve` and `spacemosquito version` check GitHub for a newer release (at most once a day) and print how to upgrade, e.g. `brew upgrade --cask spacemosquito && spacemosquito version`; other commands repeat the last result without network access. Turn it off with `update_check: false` in `config.yaml` or `SPACEMOSQUITO_NO_UPDATE_CHECK=1`.
 
 ## First run

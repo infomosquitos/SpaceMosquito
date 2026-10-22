@@ -47,6 +47,19 @@ func New() (*zap.Logger, *config.Config, error) {
 		log.Fatal("failed to normalize config paths", zap.Error(err))
 	}
 
+	// Also log to a file (config log_file), so the log outlives the terminal.
+	if dataDir, err := paths.ResolveDataDir(); err == nil {
+		if file := cfg.ServeLogFile(dataDir); file != "" {
+			fileLog, err := logger.NewProduction(&logger.Config{Level: "info", Format: "json", File: file})
+			if err != nil {
+				log.Warn("log file unavailable, logging to the terminal only", zap.String("file", file), zap.Error(err))
+			} else {
+				log = fileLog
+				log.Info("logging to file", zap.String("file", file))
+			}
+		}
+	}
+
 	return log, cfg, nil
 }
 

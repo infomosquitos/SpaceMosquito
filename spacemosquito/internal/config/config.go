@@ -19,6 +19,22 @@ type Config struct {
 	// UpdateCheck: tell the user when a newer release is available (asks
 	// GitHub at most once a day). Default on; false disables.
 	UpdateCheck *bool `yaml:"update_check"`
+	// LogFile: where `serve` also writes its log (rotated by size). Unset =
+	// logs/serve.log in the data directory; "" = terminal only; relative
+	// paths are relative to the data directory.
+	LogFile *string `yaml:"log_file"`
+}
+
+// ServeLogFile returns the log file path for serve, or "" when disabled.
+func (c *Config) ServeLogFile(dataDir string) string {
+	if c == nil || c.LogFile == nil {
+		return filepath.Join(dataDir, "logs", "serve.log")
+	}
+	p := *c.LogFile
+	if p == "" || filepath.IsAbs(p) {
+		return p
+	}
+	return filepath.Join(dataDir, p)
 }
 
 // UpdateCheckEnabled reports whether the release update check may run.

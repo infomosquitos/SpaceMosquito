@@ -7,6 +7,10 @@
 # upgrade. Set to false to turn off (or SPACEMOSQUITO_NO_UPDATE_CHECK=1).
 # update_check: true
 
+# serve also writes its log here (rotated at 10 MB, 3 old files kept).
+# Relative to the data directory; "" = terminal only.
+# log_file: logs/serve.log
+
 database:
   driver: sqlite
   path: spacemosquito.db

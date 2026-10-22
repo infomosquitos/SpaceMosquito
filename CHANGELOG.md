@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- `spacemosquito serve` also writes its log to `~/.spacemosquito/logs/serve.log`, rotated at 10 MB with 3 old files kept, so it outlives the terminal. Configure with `log_file` in `config.yaml` (`""` = terminal only).
+
 ## [0.8.8] - 2026-10-22
 
 ### Fixed
