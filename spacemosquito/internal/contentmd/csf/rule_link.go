@@ -47,14 +47,7 @@ func (linkRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, erro
 			out = firstNonEmpty(label, ch.AttrOr("ri:content-title", ""))
 			return false
 		case "ri:user":
-			u := firstNonEmpty(ch.AttrOr("ri:username", ""), ch.AttrOr("ri:userkey", ""))
-			if label != "" {
-				out = label
-			} else if u != "" {
-				out = "@" + u
-			} else {
-				out = ""
-			}
+			out = mention(ch, label, ctx)
 			return false
 		case "ri:attachment":
 			name := ch.AttrOr("ri:filename", "")
@@ -98,6 +91,27 @@ func startsWord(s string) bool {
 func endsWord(s string) bool {
 	r, _ := utf8.DecodeLastRuneInString(s)
 	return unicode.IsLetter(r) || unicode.IsDigit(r)
+}
+
+// mention renders a user reference as @Name. Cloud mentions carry only
+// ri:account-id; the name comes from ctx.UserName (looked up during crawls),
+// else "@unknown user". Server/DC refs carry a username or user key.
+func mention(ref *goquery.Selection, label string, ctx *RenderContext) string {
+	if label != "" {
+		return label
+	}
+	if id := ref.AttrOr("ri:account-id", ""); id != "" {
+		if ctx != nil && ctx.UserName != nil {
+			if name := ctx.UserName(id); name != "" {
+				return "@" + name
+			}
+		}
+		return "@unknown user"
+	}
+	if u := firstNonEmpty(ref.AttrOr("ri:username", ""), ref.AttrOr("ri:userkey", "")); u != "" {
+		return "@" + u
+	}
+	return ""
 }
 
 // linkLabel extracts the link label from a body element. It searches

@@ -21,6 +21,7 @@ type apiHistory struct {
 }
 
 type apiUser struct {
+	AccountID   string `json:"accountId"`
 	DisplayName string `json:"displayName"`
 	PublicName  string `json:"publicName"`
 	Username    string `json:"username"`

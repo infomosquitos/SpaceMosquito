@@ -27,6 +27,10 @@ type Store interface {
 	UpsertFolder(ctx context.Context, folder *Folder) error
 	// ListFolders returns a space's folders.
 	ListFolders(ctx context.Context, spaceKey string) ([]Folder, error)
+	// SaveUserNames stores display names by Confluence account ID.
+	SaveUserNames(ctx context.Context, names map[string]string) error
+	// UserNames returns all stored display names by account ID.
+	UserNames(ctx context.Context) (map[string]string, error)
 	// UpdatePageHistory sets a saved page's Confluence history; empty
 	// fields keep the stored values. No error when the page is not saved.
 	UpdatePageHistory(ctx context.Context, spaceKey string, confluenceID int, h PageHistory) error

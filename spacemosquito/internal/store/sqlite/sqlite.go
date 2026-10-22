@@ -831,3 +831,39 @@ func (d *DB) ListFolders(ctx context.Context, spaceKey string) ([]store.Folder, 
 	}
 	return out, rows.Err()
 }
+
+// SaveUserNames stores display names by Confluence account ID (empty names
+// are ignored).
+func (d *DB) SaveUserNames(ctx context.Context, names map[string]string) error {
+	now := time.Now().UTC().Format(time.RFC3339)
+	for id, name := range names {
+		if id == "" || name == "" {
+			continue
+		}
+		if _, err := d.sql.ExecContext(ctx,
+			`INSERT INTO users (account_id, display_name, updated_at) VALUES (?, ?, ?)
+			 ON CONFLICT (account_id) DO UPDATE SET display_name=excluded.display_name, updated_at=excluded.updated_at`,
+			id, name, now); err != nil {
+			return fmt.Errorf("save user name: %w", err)
+		}
+	}
+	return nil
+}
+
+// UserNames returns all stored display names by account ID.
+func (d *DB) UserNames(ctx context.Context) (map[string]string, error) {
+	rows, err := d.sql.QueryContext(ctx, `SELECT account_id, display_name FROM users`)
+	if err != nil {
+		return nil, fmt.Errorf("list user names: %w", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		out[id] = name
+	}
+	return out, rows.Err()
+}

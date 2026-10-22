@@ -58,3 +58,16 @@ func TestLink_cardSeparatedFromWords(t *testing.T) {
 		t.Errorf("plain link: %q", got)
 	}
 }
+
+func TestLink_cloudMention(t *testing.T) {
+	in := `<ul><li><p><ac:link><ri:user ri:account-id="712020:aa" ri:local-id="x" /></ac:link></p></li><li><p><ac:link><ri:user ri:account-id="712020:zz" /></ac:link></p></li></ul>`
+	ctx := &RenderContext{UserName: func(id string) string { return map[string]string{"712020:aa": "Ann Larsen"}[id] }}
+	got, _ := convert(t, in, ctx)
+	if want := "- @Ann Larsen\n- @unknown user"; strings.TrimSpace(got) != want {
+		t.Errorf("got %q, want %q", strings.TrimSpace(got), want)
+	}
+	// Without names (no crawl context) the mention is still visible.
+	if got, _ := convert(t, `<p>Owner: <ac:link><ri:user ri:account-id="712020:aa" /></ac:link></p>`, nil); strings.TrimSpace(got) != "Owner: @unknown user" {
+		t.Errorf("no names: %q", got)
+	}
+}

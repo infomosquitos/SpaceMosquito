@@ -24,6 +24,13 @@ func ReindexAll(ctx context.Context, db store.Store, savedBase string) (ReindexR
 		return ReindexResult{}, err
 	}
 
+	// Display names for @-mentions, collected by crawls.
+	names, err := db.UserNames(ctx)
+	if err != nil {
+		return ReindexResult{}, err
+	}
+	userName := func(id string) string { return names[id] }
+
 	var result ReindexResult
 	for _, page := range pages {
 		select {
@@ -38,7 +45,7 @@ func ReindexAll(ctx context.Context, db store.Store, savedBase string) (ReindexR
 			continue
 		}
 
-		md, skip, err := RenderDirMarkdown(dir)
+		md, skip, err := RenderDirMarkdownWithUsers(dir, userName)
 		if err != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", dir, err))
 			result.Skipped++

@@ -37,6 +37,9 @@ type RenderContext struct {
 	// space) and title, for attachments that belong to it (images pasted from
 	// another page). 0 = unknown; nil during offline reindex.
 	ResolvePageID func(spaceKey, title string) int
+	// UserName returns the display name of a Confluence account ID (Cloud
+	// @-mentions carry only the ID); "" = unknown. May be nil.
+	UserName func(accountID string) string
 
 	registry *Registry
 	assets   []AssetRequest

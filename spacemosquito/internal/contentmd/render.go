@@ -76,6 +76,12 @@ var pageIDPath = regexp.MustCompile(`/pages/(\d+)`)
 // regenerates Markdown; the emitted asset links are correct and populate on the
 // next crawl.
 func RenderDirMarkdown(dir string) (md, skipReason string, err error) {
+	return RenderDirMarkdownWithUsers(dir, nil)
+}
+
+// RenderDirMarkdownWithUsers is RenderDirMarkdown with display names for
+// Cloud @-mentions (account ID → name, e.g. store.UserNames).
+func RenderDirMarkdownWithUsers(dir string, userName func(accountID string) string) (md, skipReason string, err error) {
 	if DetectBodyFormat(dir) == "storage" {
 		raw, err := os.ReadFile(filepath.Join(dir, "raw.html"))
 		if err != nil {
@@ -84,7 +90,9 @@ func RenderDirMarkdown(dir string) (md, skipReason string, err error) {
 			}
 			return "", "", err
 		}
-		out, _, err := csf.CSFToMarkdown(string(raw), pageRenderContext(dir))
+		ctx := pageRenderContext(dir)
+		ctx.UserName = userName
+		out, _, err := csf.CSFToMarkdown(string(raw), ctx)
 		if err != nil {
 			return "", "", err
 		}

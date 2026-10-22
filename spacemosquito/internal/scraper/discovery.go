@@ -81,6 +81,8 @@ func (s *Scraper) discoverSpaceAPI(spaceURL string, sess *session.Session) (*Spa
 
 func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]string, flavor session.SessionFlavor) ([]*Page, error) {
 	var allPages []*Page
+	discoveredUsers := map[string]string{}
+	defer func() { s.rememberUsers(discoveredUsers) }()
 	limit := 50
 	start := 0
 
@@ -157,6 +159,9 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 				Title:        r.Title,
 				URL:          url,
 				History:      pageHistory(r.Version, r.History),
+			}
+			for id, name := range historyUsers(r.Version, r.History) {
+				discoveredUsers[id] = name
 			}
 			if n := len(r.Ancestors); n > 0 {
 				var parentID int

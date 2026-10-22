@@ -76,6 +76,7 @@ type Scraper struct {
 	mu      sync.Mutex
 	force   bool
 	pageIDs pageIDCache // page IDs by title, for attachments of other pages
+	users   userCache   // display names for @-mentions
 }
 
 // SetForce makes the next crawl re-scrape every page, ignoring the unchanged
@@ -539,6 +540,7 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 		pg.Version = result.Version.Number
 	}
 	mergeHistory(&pg.History, pageHistory(result.Version, result.History))
+	s.rememberUsers(historyUsers(result.Version, result.History))
 	if len(result.Ancestors) > 0 {
 		var parentID int
 		if _, err := fmt.Sscanf(result.Ancestors[len(result.Ancestors)-1].ID, "%d", &parentID); err == nil && parentID > 0 {
@@ -574,6 +576,7 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 	pg.Attachments = attachments
 
 	pg.resolvePageID = s.pageIDResolver(baseURL, spaceKey, sess)
+	s.resolveMentions(baseURL, storageHTML, sess)
 
 	// File attachments (pptx, pdf, …): best-effort, a failed listing still
 	// saves the page.
@@ -755,6 +758,7 @@ func (s *Scraper) renderMarkdown(pg *Page, spaceURL string, cloud bool) (string,
 			Files:   s.fileLinks(pg.Files),
 
 			ResolvePageID: pg.resolvePageID,
+			UserName:      s.userName,
 		}
 		md, assets, err := csf.CSFToMarkdown(pg.RawHTML, ctx)
 		if err != nil {
