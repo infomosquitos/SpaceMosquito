@@ -9,8 +9,13 @@ Promote finished task artifacts with [CLEANUP.md](CLEANUP.md) first if needed (b
 1. Ensure the build is green: `make test`
 2. Update [`CHANGELOG.md`](../CHANGELOG.md) to the new version (move items out of Unreleased). Keep changelog entries concise, focus on user-facing functionality changes, skip technical details.
 3. Confirm cleanup is done (or run [`CLEANUP.md`](CLEANUP.md) now).
-4. Bump firefox-extension and chrome-extension `manifest.json` + `package.json` to X.Y.Z
-   (release CI also stamps the version into the packaged manifests).
+4. Only when the extensions changed: bump firefox-extension and chrome-extension
+   `manifest.json` + `package.json` to X.Y.Z (release CI also stamps the version into
+   the packaged manifests). When nothing but version numbers changed under
+   `firefox-extension/`, `chrome-extension/` and `scripts/build-extension-zips.sh`
+   since the previous tag, the `build-extensions` job reuses the previous release's
+   signed XPI and Chrome zip, renamed to this version, instead of signing again:
+   AMO rate-limits signing (a day with many releases got "Request was throttled").
 5. Ensure GitHub repository secrets `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` are set
    (AMO API credentials for signing the Firefox XPI). Without them the
    `build-extensions` job fails.
