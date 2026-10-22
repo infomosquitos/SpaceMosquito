@@ -1,6 +1,6 @@
 {
   "name": "spacemosquito-extension",
-  "version": "0.7.4",
+  "version": "0.7.5",
   "engines": {
     "node": ">=16.20.0"
   },
