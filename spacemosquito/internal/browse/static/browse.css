@@ -25,7 +25,16 @@ main th, main td { border: 1px solid #8886; padding: 4px 8px; vertical-align: to
 main td a, main th a { overflow-wrap: anywhere; }
 main pre { padding: 12px; overflow-x: auto; background: #8881; border-radius: 4px; }
 main code { font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
-main blockquote { margin: 0; padding: 0 16px; border-left: 4px solid #8886; }
+/* Callouts (Info, Note, Warning, Tip panels render as blockquotes): light
+   blue panel as in Confluence; dark blue in dark mode. */
+main blockquote { box-sizing: border-box; margin: 0 0 16px; padding: 4px 16px; border-left: 4px solid #1d7afc; border-radius: 4px; background: #e9f2ff; }
+main blockquote.sm-callout-warning { background: #ffeceb; border-left-color: #e34935; }
+@media (prefers-color-scheme: dark) {
+  main blockquote { background: #1c2b41; border-left-color: #579dff; }
+  main blockquote.sm-callout-warning { background: #42221f; border-left-color: #f87168; }
+}
+/* Rules keep the readable width; browsers center them by default. */
+main hr { margin-left: 0; margin-right: 0; }
 .sm-files { margin-top: 32px; padding-top: 8px; border-top: 1px solid #8884; }
 .sm-files h2 { font-size: 18px; }
 .sm-files ul { list-style: none; padding: 0; }

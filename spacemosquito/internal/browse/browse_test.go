@@ -54,7 +54,7 @@ func newSite(t *testing.T) *Site {
 			`"attachments":[{"original_url":"https://example.atlassian.net/wiki/download/attachments/11/Deck%201.pptx","local_path":"assets/attachments/Deck 1.pptx","name":"Deck 1.pptx","size":2500000},` +
 			`{"original_url":"https://example.atlassian.net/wiki/download/attachments/11/Spec.pdf","local_path":"assets/attachments/Spec.pdf","name":"Spec.pdf","size":900},` +
 			`{"original_url":"https://example.atlassian.net/wiki/download/attachments/11/Huge.mp4","local_path":"","name":"Huge.mp4","size":5368709120}]}`,
-		childDir + "/content.md":                     "Intro <script>alert(1)</script>\n\n![shot.png](assets/images/shot.png)\n\n📎 [Spec.pdf](<assets/attachments/Spec.pdf> \"attachment\")\n",
+		childDir + "/content.md":                     "Intro <script>alert(1)</script>\n\n![shot.png](assets/images/shot.png)\n\n📎 [Spec.pdf](<assets/attachments/Spec.pdf> \"attachment\")\n\n> **Warning:**\n>\n> Deprecated.\n\n> **Info:**\n>\n> FYI.\n\n> A plain quote.\n",
 		childDir + "/assets/attachments/Deck 1.pptx": "PPTX",
 		childDir + "/assets/attachments/Spec.pdf":    "%PDF-1.4",
 		childDir + "/raw.html":                       `<p>Intro</p><script>alert(1)</script>`,
@@ -130,6 +130,8 @@ func TestHandler_views(t *testing.T) {
 			// File preview (inline PDF via browse.js) and the Attachments section.
 			`<a href="assets/attachments/Spec.pdf" title="attachment">Spec.pdf</a>`,
 			`<h2>Attachments (3)</h2>`,
+			// Panels are tagged by type for their colors; plain quotes are not.
+			`<blockquote class="sm-callout-warning">`, `<blockquote class="sm-callout-info">`, "<blockquote>\n<p>A plain quote.</p>",
 			`<a href="assets/attachments/Deck%201.pptx" download>Deck 1.pptx</a> <span class="sm-meta">2.4 MB</span>`,
 			`<a href="assets/attachments/Spec.pdf">Spec.pdf</a> <span class="sm-meta">900 B</span>`,
 			`<a href="https://example.atlassian.net/wiki/download/attachments/11/Huge.mp4">Huge.mp4</a> <span class="sm-meta">5.0 GB · not saved locally, opens in Confluence</span>`,

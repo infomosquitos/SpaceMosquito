@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Page trees mark pages without children with a dot, aligned with the arrows of expandable pages.
+- Horizontal rules on saved pages are left-aligned with the text instead of centered.
+- Info, Note and Tip panels on saved pages show as light blue boxes and Warning panels as light rose boxes (darker shades in dark mode), like Confluence's panels.
 
 ### Fixed
 - Words no longer run together around bold, italic, links and inline code when Confluence keeps the space inside the formatting (e.g. `Define<strong> data loading </strong>for` became `Define**data loading**for`). Run `spacemosquito reindex --content` to fix saved pages.

@@ -21,6 +21,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -386,6 +387,7 @@ func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir s
 		if v.Body, err = contentmd.RenderMarkdown(string(md)); err != nil {
 			return err
 		}
+		v.Body = markCallouts(v.Body)
 	case err != nil && !os.IsNotExist(err):
 		return fmt.Errorf("read %s: %w", contentmd.ContentFileName, err)
 	case node != nil:
@@ -397,6 +399,19 @@ func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir s
 		}
 	}
 	return tmpl.ExecuteTemplate(w, "page", v)
+}
+
+// calloutStart matches a Confluence panel as content.md renders it: a
+// blockquote opening with its bold type label (see csf.calloutBlock).
+var calloutStart = regexp.MustCompile(`<blockquote>\s*<p><strong>(Info|Note|Warning|Tip|Success|Error):</strong>`)
+
+// markCallouts tags panel blockquotes with their type (sm-callout-warning, …)
+// so the stylesheet can color them like Confluence does.
+func markCallouts(body template.HTML) template.HTML {
+	return template.HTML(calloutStart.ReplaceAllStringFunc(string(body), func(m string) string {
+		label := calloutStart.FindStringSubmatch(m)[1]
+		return strings.Replace(m, "<blockquote>", `<blockquote class="sm-callout-`+strings.ToLower(label)+`">`, 1)
+	}))
 }
 
 // fileView is one row of a page's Attachments section.
