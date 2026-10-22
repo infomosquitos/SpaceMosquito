@@ -87,9 +87,22 @@ const sidebarScript = `function (tree) {
     "#sm-nav details[open] > summary::before { transform: rotate(90deg); }",
     "#sm-nav summary:hover::before { background: #8883; opacity: 1; }",
     "#sm-nav .sm-hidden, #sm-toggle { display: none; }",
+    ".sm-top { position: sticky; top: 0; z-index: 2; margin: -24px -32px 16px; padding: 10px 32px; background: Canvas; border-bottom: 1px solid #8884; }",
+    ".sm-search { position: relative; max-width: 560px; }",
+    ".sm-search input { width: 100%; box-sizing: border-box; padding: 6px 10px; font: inherit; font-size: 14px; border: 1px solid #8886; border-radius: 4px; background: transparent; color: inherit; }",
+    ".sm-results { position: absolute; left: 0; right: 0; top: calc(100% + 4px); max-height: 70vh; overflow: auto; margin: 0; padding: 4px 0; list-style: none; background: Canvas; border: 1px solid #8886; border-radius: 6px; box-shadow: 0 8px 24px #0004; font-size: 14px; }",
+    ".sm-results[hidden] { display: none; }",
+    ".sm-results a { display: block; padding: 6px 12px; color: inherit; text-decoration: none; }",
+    ".sm-results a.sm-active, .sm-results a:hover { background: #8882; }",
+    ".sm-results .sm-title { display: block; font-weight: 600; color: LinkText; }",
+    ".sm-results .sm-excerpt { display: block; font-size: 13px; opacity: .8; overflow-wrap: anywhere; }",
+    ".sm-results .sm-note { padding: 6px 12px; font-size: 13px; opacity: .8; }",
+    ".sm-results .sm-all { border-top: 1px solid #8884; font-size: 13px; }",
     "@media (max-width: 900px) {",
     "  body.sm-with-nav { display: block; }",
     "  body.sm-with-nav .sm-content { padding: 48px 16px 24px; }",
+    "  body.sm-with-nav .sm-content:has(.sm-top) { padding-top: 24px; }",
+    "  .sm-top { margin: -24px -16px 16px; padding: 8px 16px 8px 112px; }",
     "  #sm-toggle { display: block; position: fixed; top: 8px; left: 8px; z-index: 2; }",
     "  #sm-nav { display: none; position: fixed; inset: 0 auto 0 0; width: min(320px, 85vw); z-index: 3; box-shadow: 0 0 24px #0006; }",
     "  body.sm-nav-open #sm-nav { display: block; }",
@@ -199,6 +212,8 @@ const sidebarScript = `function (tree) {
     if (e.key === "Escape") document.body.classList.remove("sm-nav-open");
   });
 
+  addSearch();
+
   // Scroll the current page into view (the narrow-screen drawer is hidden on
   // load, so this runs again when it opens).
   function revealCurrent() {
@@ -207,4 +222,120 @@ const sidebarScript = `function (tree) {
     nav.scrollTop += top - nav.clientHeight / 3;
   }
   revealCurrent();
+
+  // Content search in a top bar above the page (Confluence-style quick
+  // search). It needs the backend (/api/search, the same FTS as MCP), so it
+  // is left out when a page is opened as a file:// page. "/" focuses it.
+  function addSearch() {
+    var content = document.querySelector(".sm-content");
+    if (!content || !/^https?:$/.test(location.protocol)) return;
+    var bar = el("div", "sm-top"), box = el("div", "sm-search");
+    var input = el("input"), list = el("ul", "sm-results");
+    input.type = "search";
+    input.placeholder = "Search " + tree.key + " content\u2026   ( / )";
+    input.setAttribute("aria-label", "Search page content in this space");
+    input.autocomplete = "off";
+    list.hidden = true;
+    box.appendChild(input);
+    box.appendChild(list);
+    bar.appendChild(box);
+    content.insertBefore(bar, content.firstChild);
+
+    var timer = null, seq = 0, active = -1;
+    function links() { return list.querySelectorAll("a"); }
+    function close() { list.hidden = true; active = -1; }
+    function allResults() { return "../?q=" + encodeURIComponent(input.value.trim()); }
+    function note(text) {
+      list.textContent = "";
+      list.appendChild(el("li", "sm-note", text));
+      list.hidden = false;
+    }
+    function highlight(i) {
+      var as = links();
+      if (!as.length) return;
+      active = (i + as.length) % as.length;
+      Array.prototype.forEach.call(as, function (a, j) { a.classList.toggle("sm-active", j === active); });
+      as[active].scrollIntoView({ block: "nearest" });
+    }
+    function run() {
+      var q = input.value.trim(), my = ++seq;
+      if (q.length < 2) { close(); return; }
+      fetch("/api/search?highlight=1&limit=10&space_key=" + encodeURIComponent(tree.key) + "&q=" + encodeURIComponent(q))
+        .then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        })
+        .then(function (data) {
+          if (my !== seq) return;
+          var hits = (data.results || []).filter(function (h) {
+            return typeof h.browse_url === "string" && h.browse_url.indexOf("/browse/") === 0;
+          });
+          if (!hits.length) { note("No pages contain all of these words."); return; }
+          list.textContent = "";
+          active = -1;
+          hits.forEach(function (h) {
+            var li = el("li"), a = el("a");
+            a.href = h.browse_url;
+            a.appendChild(el("span", "sm-title", h.title));
+            if (h.excerpt) {
+              var ex = el("span", "sm-excerpt");
+              appendMarked(ex, h.excerpt);
+              a.appendChild(ex);
+            }
+            li.appendChild(a);
+            list.appendChild(li);
+          });
+          var li = el("li"), all = el("a", "sm-all", "See all results in the space \u2192");
+          all.href = allResults();
+          li.appendChild(all);
+          list.appendChild(li);
+          list.hidden = false;
+        })
+        .catch(function () {
+          if (my === seq) note("Content search is unavailable. Is spacemosquito serve running?");
+        });
+    }
+    input.addEventListener("input", function () {
+      clearTimeout(timer);
+      timer = setTimeout(run, 200);
+    });
+    input.addEventListener("focus", function () { if (list.children.length && input.value.trim().length >= 2) list.hidden = false; });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        if (list.hidden) return;
+        highlight(active + (e.key === "ArrowDown" ? 1 : -1));
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        var as = links();
+        if (active >= 0 && as[active]) location.href = as[active].href;
+        else if (input.value.trim().length >= 2) location.href = allResults();
+      } else if (e.key === "Escape") {
+        close();
+        input.blur();
+      }
+    });
+    document.addEventListener("click", function (e) { if (!box.contains(e.target)) close(); });
+    document.addEventListener("keydown", function (e) {
+      var t = e.target, typing = t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable);
+      if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        input.focus();
+        input.select();
+      }
+    });
+  }
+
+  // Excerpts wrap matches in U+E000 … U+E001 (search.MatchStart/MatchEnd).
+  function appendMarked(target, s) {
+    s.split("\uE000").forEach(function (part, i) {
+      var end = part.indexOf("\uE001");
+      if (i === 0 || end < 0) {
+        target.appendChild(document.createTextNode(part.replace(/\uE001/g, "")));
+        return;
+      }
+      target.appendChild(el("mark", "", part.slice(0, end)));
+      target.appendChild(document.createTextNode(part.slice(end + 1)));
+    });
+  }
 }`

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Content search on every saved page: a top bar above the page (press **/**) shows matching pages with highlighted excerpts as you type; **See all results** opens the space's full result list. Available through 📖 / `http://localhost:56403/browse/` (needs `serve`). Comes with the page tree sidebar, so after upgrading crawl the space or run `spacemosquito reindex --content` once.
+
 ## [0.7.6] - 2026-10-22
 
 ### Added

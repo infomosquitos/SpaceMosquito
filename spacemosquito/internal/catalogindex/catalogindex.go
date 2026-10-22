@@ -362,6 +362,12 @@ const searchSection = `{{define "search"}}<section id="content-search" class="hi
     clearTimeout(timer);
     timer = setTimeout(run, 250);
   });
+  // ?q= comes from "See all results" in a page's top bar search (tree.js).
+  var initial = new URLSearchParams(location.search).get("q");
+  if (initial) {
+    input.value = initial;
+    run();
+  }
   function run() {
     var q = input.value.trim(), my = ++seq;
     list.textContent = "";
