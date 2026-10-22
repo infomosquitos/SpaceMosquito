@@ -12,6 +12,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
+	"github.com/vkh/spacemosquito/internal/confluence"
 	"github.com/vkh/spacemosquito/internal/session"
 	"path/filepath"
 )
@@ -84,10 +85,10 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 		var apiURL string
 		if flavor == session.FlavorCloud {
 			// Cloud V1 API
-			apiURL = fmt.Sprintf("%s/wiki/rest/api/space/%s/content/page?limit=%d&start=%d&expand=version", rootURL, spaceKey, limit, start)
+			apiURL = fmt.Sprintf("%s/wiki/rest/api/space/%s/content/page?limit=%d&start=%d&expand=version,ancestors", rootURL, spaceKey, limit, start)
 		} else {
 			// Server/DC API
-			apiURL = fmt.Sprintf("%s/rest/api/content?spaceKey=%s&type=page&limit=%d&start=%d&expand=version", rootURL, spaceKey, limit, start)
+			apiURL = fmt.Sprintf("%s/rest/api/content?spaceKey=%s&type=page&limit=%d&start=%d&expand=version,ancestors", rootURL, spaceKey, limit, start)
 		}
 
 		req, err := http.NewRequest("GET", apiURL, nil)
@@ -120,6 +121,12 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 				Version struct {
 					Number int `json:"number"`
 				} `json:"version"`
+				// Ancestors (root first) give the parent at discovery time,
+				// so the page tree holds even when a page later falls back to
+				// the browser, which cannot read it.
+				Ancestors []struct {
+					ID string `json:"id"`
+				} `json:"ancestors"`
 				Links struct {
 					Self  string `json:"self"`
 					Webui string `json:"webui"`
@@ -140,17 +147,21 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 			var id int
 			fmt.Sscanf(r.ID, "%d", &id)
 
-			url := r.Links.Webui
-			if !strings.HasPrefix(url, "http") {
-				url = rootURL + url
-			}
+			url := confluence.WebUIURL(rootURL, r.Links.Webui, flavor == session.FlavorCloud)
 
-			allPages = append(allPages, &Page{
+			pg := &Page{
 				ConfluenceID: id,
 				Version:      r.Version.Number,
 				Title:        r.Title,
 				URL:          url,
-			})
+			}
+			if n := len(r.Ancestors); n > 0 {
+				var parentID int
+				if _, err := fmt.Sscanf(r.Ancestors[n-1].ID, "%d", &parentID); err == nil && parentID > 0 {
+					pg.ParentID = &parentID
+				}
+			}
+			allPages = append(allPages, pg)
 		}
 
 		if len(result.Results) < limit {

@@ -294,3 +294,13 @@ func (s *Scraper) cleanupEmptyElements(doc *goquery.Document) {
 func extractConfluenceBaseURL(urlStr string) string {
 	return confluence.BaseURL(urlStr)
 }
+
+// errorPageMarkers match Atlassian error pages (Jira/Confluence 404, "dead
+// link") that a browser fallback can land on when a URL is wrong. Saving them
+// would replace page content with the error text.
+var errorPageMarkers = regexp.MustCompile(`(?i)<body[^>]*class="[^"]*\berror(?:-page|404)\b|<title>[^<]*(?:found a dead link|page not found)`)
+
+// isErrorPage reports whether browser-captured HTML is an error page.
+func isErrorPage(html string) bool {
+	return errorPageMarkers.MatchString(html)
+}

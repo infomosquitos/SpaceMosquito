@@ -16,7 +16,8 @@ import (
 //   - "rendered" → the generic HTML converter over index.html (clean extracted
 //     HTML), falling back to raw.html.
 //
-// It returns ("", reason, nil) when nothing convertible is found. Asset requests
+// It returns ("", reason, nil) when nothing convertible is found; a Storage
+// Format page with an empty body yields ("", "", nil). Asset requests
 // from CSF conversion are ignored here — reindex/import is offline and only
 // regenerates Markdown; the emitted asset links are correct and populate on the
 // next crawl.
@@ -33,9 +34,8 @@ func RenderDirMarkdown(dir string) (md, skipReason string, err error) {
 		if err != nil {
 			return "", "", err
 		}
-		if strings.TrimSpace(out) == "" {
-			return "", "empty storage content", nil
-		}
+		// Empty is valid: pages without own content (e.g. parents of other
+		// pages) exist in Confluence; callers keep them with empty Markdown.
 		return out, "", nil
 	}
 

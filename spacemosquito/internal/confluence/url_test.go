@@ -45,3 +45,22 @@ func TestDeriveSpaceURL(t *testing.T) {
 		}
 	}
 }
+
+func TestWebUIURL(t *testing.T) {
+	cases := []struct {
+		base, webui string
+		cloud       bool
+		want        string
+	}{
+		{"https://x.atlassian.net", "/spaces/KEY/pages/1/T", true, "https://x.atlassian.net/wiki/spaces/KEY/pages/1/T"},
+		{"https://x.atlassian.net/", "/wiki/spaces/KEY/pages/1", true, "https://x.atlassian.net/wiki/spaces/KEY/pages/1"},
+		{"https://wiki.example.com/confluence", "/display/KEY/T", false, "https://wiki.example.com/confluence/display/KEY/T"},
+		{"https://x.atlassian.net", "https://other/abs", true, "https://other/abs"},
+		{"https://x.atlassian.net", "", true, ""},
+	}
+	for _, c := range cases {
+		if got := WebUIURL(c.base, c.webui, c.cloud); got != c.want {
+			t.Errorf("WebUIURL(%q, %q, %v) = %q, want %q", c.base, c.webui, c.cloud, got, c.want)
+		}
+	}
+}

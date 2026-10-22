@@ -35,6 +35,9 @@ type Page struct {
 	Content      string `json:"content,omitempty"`
 	CleanHTML    string `json:"clean_html,omitempty"`
 	RawHTML      string `json:"raw_html,omitempty"`
+	// BodyFormat is "storage" (API, Confluence Storage Format) or "rendered"
+	// (browser fallback). Set explicitly: an empty storage body cannot be sniffed.
+	BodyFormat   string `json:"body_format,omitempty"`
 	Images       []storage.AssetRef
 	Attachments  []storage.AssetRef
 	FileDir      string `json:"file_dir,omitempty"`
@@ -522,10 +525,9 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 		return fmt.Errorf("page %d is in space %q, not %q", pg.ConfluenceID, result.Space.Key, spaceKey)
 	}
 
+	// An empty body is a real page without content of its own (typically a
+	// parent of other pages); save it rather than falling back to the browser.
 	storageHTML := result.Body.Storage.Value
-	if storageHTML == "" {
-		return fmt.Errorf("empty storage body")
-	}
 
 	if result.Title != "" {
 		pg.Title = result.Title
@@ -540,19 +542,16 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 		}
 	}
 	if pg.URL == "" {
+		cloud := sess.Flavor == session.FlavorCloud
 		webui := result.Links.Webui
-		if webui != "" {
-			if strings.HasPrefix(webui, "http") {
-				pg.URL = webui
-			} else {
-				pg.URL = strings.TrimRight(baseURL, "/") + webui
-			}
-		} else {
-			pg.URL = fmt.Sprintf("%s/spaces/%s/pages/%d", strings.TrimRight(baseURL, "/"), spaceKey, pg.ConfluenceID)
+		if webui == "" {
+			webui = fmt.Sprintf("/spaces/%s/pages/%d", spaceKey, pg.ConfluenceID)
 		}
+		pg.URL = confluence.WebUIURL(baseURL, webui, cloud)
 	}
 
 	pg.RawHTML = storageHTML
+	pg.BodyFormat = "storage"
 
 	if s.log.Enabled() {
 		s.log.Debugw("page content captured via API",
@@ -608,7 +607,7 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 	// Browsers cannot display Storage Format, so CSF pages get index.html
 	// rendered from content.md (which links downloaded assets locally);
 	// browser-fallback pages keep their extracted HTML.
-	if csf.IsStorageFormat(pg.RawHTML) {
+	if pg.isStorage() {
 		if err := contentmd.WriteIndexHTML(dir, pg.Title, pg.URL, contentMD); err != nil {
 			return fmt.Errorf("save index html: %w", err)
 		}
@@ -631,7 +630,7 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 	pg.RawHTMLPath = dir + "/raw.html"
 
 	bodyFormat := "rendered"
-	if csf.IsStorageFormat(pg.RawHTML) {
+	if pg.isStorage() {
 		bodyFormat = "storage"
 	}
 	meta := &storage.Metadata{
@@ -712,11 +711,20 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 	return nil
 }
 
+// isStorage reports whether the page body is Confluence Storage Format,
+// trusting BodyFormat and sniffing RawHTML only when it is unset.
+func (pg *Page) isStorage() bool {
+	if pg.BodyFormat != "" {
+		return pg.BodyFormat == "storage"
+	}
+	return csf.IsStorageFormat(pg.RawHTML)
+}
+
 // renderMarkdown produces the page's Markdown, routing by input format: pages
 // whose raw body is Confluence Storage Format go through the rule-based CSF
 // converter; browser-fallback rendered HTML uses the generic converter.
 func (s *Scraper) renderMarkdown(pg *Page, spaceURL string, cloud bool) (string, []csf.AssetRequest, error) {
-	if csf.IsStorageFormat(pg.RawHTML) {
+	if pg.isStorage() {
 		ctx := &csf.RenderContext{
 			PageID:  pg.ConfluenceID,
 			BaseURL: extractConfluenceBaseURL(spaceURL),
@@ -773,7 +781,11 @@ func (s *Scraper) ScrapePage(pg *Page, spaceKey, spaceURL string) error {
 		return fmt.Errorf("get html: %w", err)
 	}
 
+	if isErrorPage(html) {
+		return fmt.Errorf("browser got an error page instead of content (url %s)", pg.URL)
+	}
 	pg.RawHTML = html
+	pg.BodyFormat = "rendered"
 
 	if s.log.Enabled() {
 		s.log.Debugw("page content captured via browser",

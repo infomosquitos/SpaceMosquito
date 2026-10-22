@@ -133,8 +133,8 @@ func TestFetchPageListAPI_cloud(t *testing.T) {
 			http.NotFound(w, r)
 			return
 		}
-		if !strings.Contains(r.URL.RawQuery, "expand=version") {
-			t.Error("expected expand=version in query")
+		if !strings.Contains(r.URL.RawQuery, "expand=version,ancestors") {
+			t.Error("expected expand=version,ancestors in query")
 		}
 		page++
 		if page == 1 {
@@ -156,8 +156,14 @@ func TestFetchPageListAPI_cloud(t *testing.T) {
 	if pages[0].Version != 11 {
 		t.Errorf("version = %d, want 11", pages[0].Version)
 	}
-	if !strings.HasPrefix(pages[0].URL, srv.URL) {
-		t.Errorf("webui URL not absolute: %q", pages[0].URL)
+	if want := srv.URL + "/wiki/spaces/DEMO/pages/100000001/Getting+Started"; pages[0].URL != want {
+		t.Errorf("URL = %q, want %q (Cloud webui is relative to /wiki)", pages[0].URL, want)
+	}
+	if pages[0].ParentID != nil {
+		t.Errorf("root page parent = %d, want none", *pages[0].ParentID)
+	}
+	if pages[1].ParentID == nil || *pages[1].ParentID != 100000001 {
+		t.Errorf("parent = %v, want nearest ancestor 100000001", pages[1].ParentID)
 	}
 }
 

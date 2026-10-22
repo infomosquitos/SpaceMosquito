@@ -63,7 +63,9 @@ blockquote { margin: 0; padding: 0 16px; border-left: 4px solid #8886; }
 // links to the space index one directory up (see internal/catalogindex).
 func MarkdownToHTML(spaceKey, title, sourceURL, markdown string) (string, error) {
 	var body bytes.Buffer
-	if err := mdRenderer.Convert([]byte(markdown), &body); err != nil {
+	if strings.TrimSpace(markdown) == "" {
+		body.WriteString("<p><em>This page has no content of its own.</em></p>\n")
+	} else if err := mdRenderer.Convert([]byte(markdown), &body); err != nil {
 		return "", fmt.Errorf("render markdown: %w", err)
 	}
 	var out bytes.Buffer

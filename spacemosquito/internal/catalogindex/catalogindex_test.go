@@ -88,12 +88,17 @@ func TestWriteSpace(t *testing.T) {
 	child := "11-Data mapping iFlow > [Commerce]"
 	mkdirs(t, spaceDir, "10-Home", child)
 	for _, p := range []store.Page{
-		{SpaceID: spaceID, ConfluenceID: 10, Title: "Home", FileDir: filepath.Join(spaceDir, "10-Home")},
+		// Empty Storage Format parent: gets a child list in its index.html.
+		{SpaceID: spaceID, ConfluenceID: 10, Title: "Home", BodyFormat: "storage", FileDir: filepath.Join(spaceDir, "10-Home")},
 		{SpaceID: spaceID, ConfluenceID: 11, Title: "Data mapping iFlow > [Commerce]", ParentConfluenceID: intp(10), FileDir: filepath.Join(spaceDir, child)},
 	} {
 		if err := db.UpsertPage(ctx, &p); err != nil {
 			t.Fatal(err)
 		}
+	}
+
+	if err := os.WriteFile(filepath.Join(spaceDir, "10-Home", "metadata.json"), []byte(`{"title":"Home","body_format":"storage"}`), 0o644); err != nil {
+		t.Fatal(err)
 	}
 
 	if err := catalogindex.WriteSpace(ctx, db, saved, "TST"); err != nil {
@@ -127,6 +132,15 @@ func TestWriteSpace(t *testing.T) {
 	} {
 		if !strings.Contains(spaceMD, want) {
 			t.Errorf("space index.md missing %q:\n%s", want, spaceMD)
+		}
+	}
+	homeHTML := read(filepath.Join(spaceDir, "10-Home", "index.html"))
+	for _, want := range []string{
+		"no content of its own. Child pages:",
+		`<a href="../11-Data%20mapping%20iFlow%20%3E%20%5BCommerce%5D/index.html">Data mapping iFlow &gt; [Commerce]</a>`,
+	} {
+		if !strings.Contains(homeHTML, want) {
+			t.Errorf("container page index.html missing %q:\n%s", want, homeHTML)
 		}
 	}
 	rootHTML := read(filepath.Join(saved, "index.html"))

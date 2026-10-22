@@ -79,3 +79,18 @@ func DeriveSpaceURL(pageOrSpaceURL, spaceKey string) string {
 		return base + "/spaces/" + spaceKey
 	}
 }
+
+// WebUIURL resolves a REST `_links.webui` path against the BaseURL result.
+// Cloud REST returns webui paths relative to /wiki (e.g. /spaces/KEY/pages/1)
+// while BaseURL strips /wiki, so it is re-added for Cloud. Absolute input is
+// returned unchanged.
+func WebUIURL(baseURL, webui string, cloud bool) string {
+	if webui == "" || strings.HasPrefix(webui, "http://") || strings.HasPrefix(webui, "https://") {
+		return webui
+	}
+	base := strings.TrimRight(baseURL, "/")
+	if cloud && !strings.HasPrefix(webui, "/wiki/") {
+		base += "/wiki"
+	}
+	return base + webui
+}

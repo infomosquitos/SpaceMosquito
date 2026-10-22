@@ -17,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vkh/spacemosquito/internal/contentmd"
 	"github.com/vkh/spacemosquito/internal/store"
 )
 
@@ -30,6 +31,7 @@ const (
 type Node struct {
 	Title    string
 	Dir      string // page directory name under the space directory
+	Empty    bool   // Storage Format page without content of its own
 	Children []*Node
 }
 
@@ -105,7 +107,32 @@ func writeSpace(ctx context.Context, db store.Store, savedBase string, sp store.
 	if err := writePair(spaceDir, spaceTemplate, tree, renderSpaceMarkdown(tree)); err != nil {
 		return nil, err
 	}
+	if err := writeContainerPages(spaceDir, tree.Roots); err != nil {
+		return nil, err
+	}
 	return tree, nil
+}
+
+// writeContainerPages gives empty parent pages (Confluence pages that only
+// group other pages) an index.html listing their children, as Confluence
+// shows them. Children change between crawls, so this runs with the index.
+func writeContainerPages(spaceDir string, ns []*Node) error {
+	for _, n := range ns {
+		if n.Empty && len(n.Children) > 0 {
+			var b strings.Builder
+			b.WriteString("This page has no content of its own. Child pages:\n\n")
+			for _, c := range n.Children {
+				fmt.Fprintf(&b, "- [%s](../%s)\n", mdEscaper.Replace(c.Title), href(c.Dir, "index.html"))
+			}
+			if _, err := contentmd.RefreshDirIndexHTML(filepath.Join(spaceDir, n.Dir), b.String()); err != nil {
+				return fmt.Errorf("write container page %s: %w", n.Dir, err)
+			}
+		}
+		if err := writeContainerPages(spaceDir, n.Children); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func listPages(ctx context.Context, db store.Store, spaceKey string) ([]store.Page, error) {
@@ -140,7 +167,8 @@ func BuildTree(pages []store.Page, spaceDir string) ([]*Node, int) {
 		if title == "" {
 			title = dir
 		}
-		nodes[p.ConfluenceID] = &Node{Title: title, Dir: dir}
+		empty := p.BodyFormat == "storage" && strings.TrimSpace(p.Content) == ""
+		nodes[p.ConfluenceID] = &Node{Title: title, Dir: dir, Empty: empty}
 		order = append(order, p.ConfluenceID)
 	}
 	parents := map[int]int{}
