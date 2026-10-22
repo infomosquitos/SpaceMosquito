@@ -140,6 +140,10 @@ func TestREST_Search_highlight(t *testing.T) {
 		if strings.ContainsAny(hit.Excerpt, search.MatchStart+search.MatchEnd) {
 			t.Fatalf("default excerpt leaks match markers: %q", hit.Excerpt)
 		}
+		// file_path is the page Markdown (ADR-018), not a generated HTML file.
+		if !strings.HasSuffix(hit.FilePath, "/content.md") {
+			t.Fatalf("file_path = %q, want …/content.md", hit.FilePath)
+		}
 	}
 	marked := false
 	for _, hit := range get("&highlight=1") {

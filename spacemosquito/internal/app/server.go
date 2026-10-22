@@ -11,6 +11,7 @@ import (
 
 	"github.com/vkh/spacemosquito/internal/api"
 	"github.com/vkh/spacemosquito/internal/bootstrap"
+	"github.com/vkh/spacemosquito/internal/browse"
 	"github.com/vkh/spacemosquito/internal/config"
 	"github.com/vkh/spacemosquito/internal/cron"
 	"github.com/vkh/spacemosquito/internal/datastore"
@@ -142,7 +143,8 @@ func setupComponents(cfg *config.Config, log *zap.Logger) (*serverComponents, er
 	mux.HandleFunc("POST /api/spaces", api.SpacesHandler(database, cfg.Storage.BasePath, logging.New("spaces", log)))
 	mux.HandleFunc("GET /api/spaces/{key}", api.SpaceByIDHandler(database, cfg.Storage.BasePath, cronManager, crawlJobManager, logging.New("spaces", log)))
 	mux.HandleFunc("DELETE /api/spaces/{key}", api.SpaceByIDHandler(database, cfg.Storage.BasePath, cronManager, crawlJobManager, logging.New("spaces", log)))
-	mux.Handle("GET "+api.BrowsePrefix, api.BrowseHandler(cfg.Storage.BasePath))
+	browseSite := &browse.Site{DB: database, SavedBase: cfg.Storage.BasePath, Log: logging.New("browse", log)}
+	mux.Handle("GET "+browse.Prefix, browseSite.Handler())
 	mux.HandleFunc("GET /api/spaces/{key}/pages", api.SpacePagesHandler(database, cfg, logging.New("spaces", log)))
 	mux.HandleFunc("GET /api/pages/{confluence_id}", api.PageByConfluenceIDHandler(database, cfg, logging.New("pages", log)))
 	mux.HandleFunc("GET /api/pages/{confluence_id}/compare", api.PageCompareHandler(database, sessionStore, cfg, logging.New("pages", log)))

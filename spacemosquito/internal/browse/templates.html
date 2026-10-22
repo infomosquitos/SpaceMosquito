@@ -1,0 +1,88 @@
+{{define "head"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.DocTitle}}</title>
+<link rel="stylesheet" href="{{.Base}}.static/browse.css?v={{.AssetVersion}}">
+<script src="{{.Base}}.static/browse.js?v={{.AssetVersion}}" defer></script>
+</head>
+{{end}}
+
+{{define "link"}}<a href="{{.Href}}"{{if .Current}} class="sm-current" aria-current="page"{{end}}>{{.Title}}</a>{{end}}
+
+{{define "nodes"}}{{range .}}<li{{if not .Children}} class="sm-leaf"{{end}}>{{if .Children}}<details{{if .Open}} open{{end}}><summary>{{template "link" .}} <span class="sm-count">({{len .Children}})</span></summary><ul>
+{{template "nodes" .Children}}</ul></details>{{else}}{{template "link" .}}{{end}}</li>
+{{end}}{{end}}
+
+{{define "fullsearch"}}{{if .Search}}<section class="sm-fullsearch" data-space="{{.Key}}">
+<input type="search" placeholder="Search page content{{if .Key}} in this space{{end}}…   ( / )" aria-label="Search page content" autocomplete="off">
+<p class="sm-status sm-meta"></p>
+<ol></ol>
+</section>
+{{end}}{{end}}
+
+{{define "root"}}{{template "head" .}}<body class="sm-doc">
+<header>
+<h1>SpaceMosquito catalog</h1>
+</header>
+{{if .Spaces}}{{template "fullsearch" .}}<ul>
+{{range .Spaces}}<li><a href="{{.Href}}">{{.Heading}}</a> <span class="sm-meta">— {{.Summary}}</span></li>
+{{end}}</ul>{{else}}<p>No spaces saved yet.</p>{{end}}
+</body>
+</html>
+{{end}}
+
+{{define "space"}}{{template "head" .}}<body class="sm-doc">
+<header>
+<nav><a href="{{.RootHref}}">← All spaces</a>{{if .ConfluenceURL}} · <a href="{{.ConfluenceURL}}">Open in Confluence</a>{{end}}</nav>
+<h1>{{.Heading}}</h1>
+<p class="sm-meta">{{.Summary}}</p>
+</header>
+{{template "fullsearch" .}}<div class="sm-tree-box">
+<div class="sm-tools">
+<input type="search" class="sm-filter" placeholder="Filter pages by title…" aria-label="Filter pages by title"{{if not .Search}} autofocus{{end}}>
+<button type="button" class="sm-expand" title="Show every page in the tree">Expand all</button>
+<button type="button" class="sm-collapse" title="Show only top-level pages">Collapse all</button>
+</div>
+<ul class="sm-tree">
+{{template "nodes" .Tree}}</ul>
+</div>
+</body>
+</html>
+{{end}}
+
+{{define "page"}}{{template "head" .}}<body class="sm-page">
+<button type="button" id="sm-toggle">☰ Pages</button>
+<aside id="sm-nav" class="sm-tree-box" aria-label="Pages in {{.SpaceHeading}}">
+<div class="sm-head">
+<a class="sm-space" href="{{.SpaceHref}}" title="Space home: full tree and content search">{{.SpaceHeading}}</a>
+<div class="sm-meta">{{.SpaceSummary}}</div>
+<div class="sm-tools">
+<input type="search" class="sm-filter" placeholder="Filter pages…" aria-label="Filter pages by title">
+<button type="button" class="sm-expand" title="Expand all">⊞</button>
+<button type="button" class="sm-collapse" title="Collapse all">⊟</button>
+</div>
+</div>
+<ul class="sm-tree">
+{{template "nodes" .Tree}}</ul>
+</aside>
+<div class="sm-content">
+{{if .Search}}<div class="sm-top"><div class="sm-quick" data-space="{{.Key}}" data-all="{{.SpaceHref}}">
+<input type="search" placeholder="Search {{.Key}} content…   ( / )" aria-label="Search page content in this space" autocomplete="off">
+<ul class="sm-results" hidden></ul>
+</div></div>
+{{end}}<header>
+<nav><a href="{{.RootHref}}">All spaces</a> · <a href="{{.SpaceHref}}">{{.Key}}</a>{{if .SourceURL}} · <a href="{{.SourceURL}}">View in Confluence</a>{{end}}</nav>
+<h1>{{.Title}}</h1>
+</header>
+<main>
+{{if .Body}}{{.Body}}{{else if .Children}}<p><em>This page has no content of its own. Child pages:</em></p>
+<ul>
+{{range .Children}}<li><a href="{{.Href}}">{{.Title}}</a></li>
+{{end}}</ul>{{else}}<p><em>This page has no content of its own.</em></p>{{end}}
+</main>
+</div>
+</body>
+</html>
+{{end}}

@@ -495,7 +495,7 @@ func (d *DB) searchPagesFTS(ctx context.Context, query, spaceKey string, limit i
 		SELECT p.confluence_id, s.key, p.title,
 		       snippet(pages_fts, 2, char(57344), char(57345), '...', 20) AS excerpt, -- U+E000/U+E001: search.MatchStart/MatchEnd
 		       bm25(pages_fts, 0.0, 10.0, 1.0) AS similarity,
-		       p.html_path, p.id
+		       CASE WHEN p.file_dir <> '' THEN p.file_dir || '/content.md' ELSE p.html_path END, p.id -- file_path: page Markdown (ADR-018)
 		FROM pages_fts
 		JOIN pages p ON p.id = pages_fts.page_id
 		JOIN spaces s ON s.id = p.space_id
@@ -527,7 +527,7 @@ func (d *DB) searchPagesTitleFallback(ctx context.Context, query, spaceKey strin
 		SELECT p.confluence_id, s.key, p.title,
 		       substr(p.title, 1, 200) AS excerpt,
 		       0.0 AS similarity,
-		       p.html_path, p.id
+		       CASE WHEN p.file_dir <> '' THEN p.file_dir || '/content.md' ELSE p.html_path END, p.id -- file_path: page Markdown (ADR-018)
 		FROM pages p
 		JOIN spaces s ON s.id = p.space_id
 		WHERE 1=1`

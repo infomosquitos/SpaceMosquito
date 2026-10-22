@@ -63,12 +63,13 @@ func TestCrawlPage_emptyBodyParentPage(t *testing.T) {
 	if want := srv.URL + "/wiki/spaces/PROJ/pages/43/"; !strings.Contains(string(meta), want) {
 		t.Fatalf("confluence_url lacks /wiki: %s", meta)
 	}
-	idx, err := os.ReadFile(filepath.Join(got.FileDir, "index.html"))
-	if err != nil {
-		t.Fatal(err)
+	// Storage Format pages are rendered by the browse UI from content.md
+	// (ADR-018); no index.html is written.
+	if _, err := os.Stat(filepath.Join(got.FileDir, "index.html")); !os.IsNotExist(err) {
+		t.Fatalf("index.html written for a storage page (err=%v)", err)
 	}
-	if !strings.Contains(string(idx), "no content of its own") {
-		t.Fatalf("index.html:\n%s", idx)
+	if got.HTMLPath != "" {
+		t.Fatalf("html_path = %q, want empty for a storage page", got.HTMLPath)
 	}
 }
 

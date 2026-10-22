@@ -598,17 +598,21 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 		return fmt.Errorf("save content markdown: %w", err)
 	}
 
-	// Browsers cannot display Storage Format, so CSF pages get index.html
-	// rendered from content.md (which links downloaded assets locally);
-	// browser-fallback pages keep their extracted HTML.
+	// The browse UI renders pages from content.md (ADR-018). Browser-fallback
+	// pages also keep their extracted HTML: it is the source of their
+	// content.md (reindex --content). A refreshed CSF page drops index.html
+	// written by earlier versions.
 	if pg.isStorage() {
-		if err := contentmd.WriteIndexHTML(dir, pg.Title, pg.URL, contentMD); err != nil {
-			return fmt.Errorf("save index html: %w", err)
+		if err := os.Remove(filepath.Join(dir, "index.html")); err != nil && !os.IsNotExist(err) {
+			s.log.Warnw("remove legacy index.html failed", "dir", dir, "error", err)
 		}
-	} else if err := s.storage.SaveHTML(dir, pg.CleanHTML); err != nil {
-		return fmt.Errorf("save clean html: %w", err)
+		pg.HTMLPath = ""
+	} else {
+		if err := s.storage.SaveHTML(dir, pg.CleanHTML); err != nil {
+			return fmt.Errorf("save clean html: %w", err)
+		}
+		pg.HTMLPath = dir + "/index.html"
 	}
-	pg.HTMLPath = dir + "/index.html"
 
 	// CSF conversion schedules asset downloads (images, diagrams); fetch them
 	// into the page dir and record them alongside any HTML-path images.
@@ -682,7 +686,7 @@ func (s *Scraper) savePageMetadata(pg *Page, spaceKey, spaceURL string, cloud bo
 		Title:              pg.Title,
 		ParentConfluenceID: parentID,
 		Content:            contentMD,
-		HTMLPath:           dir + "/index.html",
+		HTMLPath:           pg.HTMLPath,
 		RawHTMLPath:        dir + "/raw.html",
 		MetadataPath:       dir + "/metadata.json",
 		FileDir:            dir,

@@ -229,7 +229,11 @@ func parseRecord(metaPath string) (importRecord, string, error) {
 		return rec, "missing confluence_id in confluence_url", nil
 	}
 
-	rec.htmlPath = filepath.Join(rec.fileDir, "index.html")
+	// Storage Format pages are browsed from content.md (ADR-018); only
+	// browser-fallback pages have an index.html of their own.
+	if contentmd.DetectBodyFormat(rec.fileDir) != "storage" {
+		rec.htmlPath = filepath.Join(rec.fileDir, "index.html")
+	}
 	rec.rawHTMLPath = filepath.Join(rec.fileDir, "raw.html")
 	content, skipReason, err := contentmd.RenderDirMarkdown(rec.fileDir)
 	if err != nil {
@@ -241,7 +245,6 @@ func parseRecord(metaPath string) (importRecord, string, error) {
 	rec.content = content
 	if strings.TrimSpace(content) != "" {
 		_ = contentmd.WriteFile(rec.fileDir, content)
-		_, _ = contentmd.RefreshDirIndexHTML(rec.fileDir, content)
 	}
 
 	return rec, "", nil

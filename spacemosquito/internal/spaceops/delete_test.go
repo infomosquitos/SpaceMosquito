@@ -99,8 +99,8 @@ func TestDelete_keepsFilesByDefault(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(saved, "TST", "1-Page")); err != nil {
 		t.Fatalf("saved files should be kept: %v", err)
 	}
-	root, _ := os.ReadFile(filepath.Join(saved, "index.html"))
-	if strings.Contains(string(root), "TST/index.html") || !strings.Contains(string(root), "KEEP/index.html") {
+	root, _ := os.ReadFile(filepath.Join(saved, "index.md"))
+	if strings.Contains(string(root), "TST/index.md") || !strings.Contains(string(root), "KEEP/index.md") {
 		t.Fatalf("root index not updated:\n%s", root)
 	}
 }

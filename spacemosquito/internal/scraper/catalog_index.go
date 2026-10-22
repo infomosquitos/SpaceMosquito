@@ -12,9 +12,10 @@ import (
 // rewrite during a space crawl.
 const catalogIndexRefreshEvery = 20
 
-// catalogIndexRefresher keeps a space's page tree (saved/<KEY>/index.html)
-// current during a crawl, so the saved catalog can be browsed while the
-// crawl is still running.
+// catalogIndexRefresher keeps a space's Markdown page tree
+// (saved/<KEY>/index.md) current during a crawl. Creating saved/<KEY> at the
+// start also makes the space browsable (browse renders the tree from the DB)
+// while the crawl is still running.
 type catalogIndexRefresher struct {
 	s        *Scraper
 	spaceKey string
@@ -47,7 +48,7 @@ func (r *catalogIndexRefresher) finish() {
 	r.s.writeCatalogIndex(r.spaceKey)
 }
 
-// writeCatalogIndex rebuilds the space page tree and root catalog index
+// writeCatalogIndex rebuilds the space and root index.md files
 // (best-effort: a failure leaves the previous index and is only logged).
 // It ignores crawl cancellation so a stopped crawl still updates the index.
 func (s *Scraper) writeCatalogIndex(spaceKey string) {

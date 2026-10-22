@@ -1,9 +1,9 @@
 # ADR-015: Saved Page Format — HTML + Markdown Content
 
-- **Status:** Accepted
+- **Status:** Accepted — superseded in part by [ADR-018](018-browse-rendered-on-request.md) (no generated `index.html` / HTML navigation; browse renders `content.md` on request)
 - **Date:** 2026-07-15
 - **Supersedes:** ADR-006 (deleted; prior HTML-only layout)
-- **Related:** ADR-010, [`dev/README.md`](../dev/README.md) (page content / reindex)
+- **Related:** ADR-010, [`dev/README.md`](../../dev/README.md) (page content / reindex), [ADR-018](018-browse-rendered-on-request.md)
 
 ## Context
 

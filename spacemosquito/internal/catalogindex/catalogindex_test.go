@@ -59,7 +59,9 @@ func TestBuildTree(t *testing.T) {
 	}
 }
 
-func TestWriteSpace(t *testing.T) {
+// openDB returns a migrated test database whose saved catalog is saved.
+func openDB(t *testing.T) (store.Store, string) {
+	t.Helper()
 	dir := t.TempDir()
 	saved := filepath.Join(dir, "saved")
 	cfg := &config.Config{
@@ -77,8 +79,12 @@ func TestWriteSpace(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer db.Close()
+	t.Cleanup(func() { db.Close() })
+	return db, saved
+}
 
+func TestWriteSpace(t *testing.T) {
+	db, saved := openDB(t)
 	ctx := context.Background()
 	spaceID, err := db.CreateSpace(ctx, "TST", "Test Space", "https://example.atlassian.net/wiki/spaces/TST")
 	if err != nil {
@@ -88,17 +94,12 @@ func TestWriteSpace(t *testing.T) {
 	child := "11-Data mapping iFlow > [Commerce]"
 	mkdirs(t, spaceDir, "10-Home", child)
 	for _, p := range []store.Page{
-		// Empty Storage Format parent: gets a child list in its index.html.
 		{SpaceID: spaceID, ConfluenceID: 10, Title: "Home", BodyFormat: "storage", FileDir: filepath.Join(spaceDir, "10-Home")},
 		{SpaceID: spaceID, ConfluenceID: 11, Title: "Data mapping iFlow > [Commerce]", ParentConfluenceID: intp(10), FileDir: filepath.Join(spaceDir, child)},
 	} {
 		if err := db.UpsertPage(ctx, &p); err != nil {
 			t.Fatal(err)
 		}
-	}
-
-	if err := os.WriteFile(filepath.Join(spaceDir, "10-Home", "metadata.json"), []byte(`{"title":"Home","body_format":"storage"}`), 0o644); err != nil {
-		t.Fatal(err)
 	}
 
 	if err := catalogindex.WriteSpace(ctx, db, saved, "TST"); err != nil {
@@ -113,59 +114,75 @@ func TestWriteSpace(t *testing.T) {
 		}
 		return string(b)
 	}
-	spaceHTML := read(filepath.Join(spaceDir, "index.html"))
-	for _, want := range []string{
-		`<title>Test Space (TST)</title>`,
-		`<a href="../index.html">← All spaces</a>`,
-		`<a href="10-Home/index.html">Home</a> <span class="count">(1)</span>`,
-		`id="expand-all"`,
-		`id="collapse-all"`,
-		`<a href="11-Data%20mapping%20iFlow%20%3E%20%5BCommerce%5D/index.html">Data mapping iFlow &gt; [Commerce]</a>`,
-		`2 pages`,
-		`<section id="content-search" class="hidden" data-space="TST">`,
-		`Search page content in this space`,
-	} {
-		if !strings.Contains(spaceHTML, want) {
-			t.Errorf("space index.html missing %q:\n%s", want, spaceHTML)
-		}
-	}
 	spaceMD := read(filepath.Join(spaceDir, "index.md"))
 	for _, want := range []string{
 		"# Test Space (TST)",
+		"2 pages",
 		"- [Home](10-Home/content.md)\n  - [Data mapping iFlow > \\[Commerce\\]](11-Data%20mapping%20iFlow%20%3E%20%5BCommerce%5D/content.md)",
 	} {
 		if !strings.Contains(spaceMD, want) {
 			t.Errorf("space index.md missing %q:\n%s", want, spaceMD)
 		}
 	}
-	homeHTML := read(filepath.Join(spaceDir, "10-Home", "index.html"))
-	for _, want := range []string{
-		"no content of its own. Child pages:",
-		`<a href="../11-Data%20mapping%20iFlow%20%3E%20%5BCommerce%5D/index.html">Data mapping iFlow &gt; [Commerce]</a>`,
-	} {
-		if !strings.Contains(homeHTML, want) {
-			t.Errorf("container page index.html missing %q:\n%s", want, homeHTML)
-		}
-	}
-	treeJS := read(filepath.Join(spaceDir, catalogindex.TreeScriptFile))
-	for _, want := range []string{
-		`"key":"TST","title":"Test Space (TST)","meta":"2 pages"`,
-		`{"t":"Home","d":"10-Home","c":[{"t":"Data mapping iFlow \u003e [Commerce]","d":"11-Data mapping iFlow \u003e [Commerce]"}]}`,
-		`getElementById("sm-nav")`,
-		`/api/search?highlight=1&limit=10&space_key=`,
-	} {
-		if !strings.Contains(treeJS, want) {
-			t.Errorf("tree.js missing %q:\n%s", want, treeJS)
-		}
-	}
-	rootHTML := read(filepath.Join(saved, "index.html"))
-	if !strings.Contains(rootHTML, `<section id="content-search" class="hidden" data-space="">`) {
-		t.Errorf("root index.html lacks all-spaces search:\n%s", rootHTML)
-	}
-	if !strings.Contains(rootHTML, `<a href="TST/index.html">Test Space (TST)</a>`) {
-		t.Errorf("root index.html:\n%s", rootHTML)
-	}
 	if rootMD := read(filepath.Join(saved, "index.md")); !strings.Contains(rootMD, "- [Test Space (TST)](TST/index.md) — 2 pages") {
 		t.Errorf("root index.md:\n%s", rootMD)
+	}
+	// The browse UI renders HTML on request (ADR-018); nothing is generated.
+	for _, f := range []string{filepath.Join(saved, "index.html"), filepath.Join(spaceDir, "index.html"), filepath.Join(spaceDir, "10-Home", "index.html")} {
+		if _, err := os.Stat(f); !os.IsNotExist(err) {
+			t.Errorf("%s written (err=%v)", f, err)
+		}
+	}
+
+	sp, err := catalogindex.LoadSpace(ctx, db, saved, "TST")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sp.Heading() != "Test Space (TST)" || sp.Summary() != "2 pages" || len(sp.Roots) != 1 || len(sp.Roots[0].Children) != 1 {
+		t.Fatalf("LoadSpace = %q %q roots=%d", sp.Heading(), sp.Summary(), len(sp.Roots))
+	}
+	if _, err := catalogindex.LoadSpace(ctx, db, saved, "NOPE"); err == nil {
+		t.Fatal("LoadSpace of an unknown space succeeded")
+	}
+}
+
+func TestRemoveLegacyHTML(t *testing.T) {
+	saved := t.TempDir()
+	write := func(rel, body string) {
+		t.Helper()
+		p := filepath.Join(saved, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	write("index.html", "catalog")
+	write("index.md", "catalog md")
+	write("TST/index.html", "tree")
+	write("TST/tree.js", "js")
+	write("TST/1-Storage/metadata.json", `{"body_format":"storage"}`)
+	write("TST/1-Storage/index.html", "generated")
+	write("TST/1-Storage/content.md", "md")
+	write("TST/2-Rendered/metadata.json", `{"body_format":"rendered"}`)
+	write("TST/2-Rendered/index.html", "source of content.md")
+
+	n, err := catalogindex.RemoveLegacyHTML(saved)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 4 {
+		t.Fatalf("removed %d files, want 4", n)
+	}
+	for rel, want := range map[string]bool{
+		"index.html": false, "index.md": true, "TST/index.html": false, "TST/tree.js": false,
+		"TST/1-Storage/index.html": false, "TST/1-Storage/content.md": true,
+		"TST/2-Rendered/index.html": true,
+	} {
+		_, err := os.Stat(filepath.Join(saved, rel))
+		if got := err == nil; got != want {
+			t.Errorf("%s exists=%v, want %v", rel, got, want)
+		}
 	}
 }

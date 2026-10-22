@@ -57,6 +57,7 @@ func SeedFixtures(ctx context.Context, db store.Store) (*SeedData, error) {
 			Title:        seed.PageTitles[id],
 			Content:      seed.PageContents[id],
 			HTMLPath:     "saved/" + seed.SpaceKey + "/" + seed.PageTitles[id] + "/index.html",
+			FileDir:      "saved/" + seed.SpaceKey + "/" + seed.PageTitles[id],
 		}
 		if err := db.UpsertPage(ctx, page); err != nil {
 			return nil, err

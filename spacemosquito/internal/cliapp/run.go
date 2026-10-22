@@ -15,6 +15,7 @@ import (
 
 	"github.com/vkh/spacemosquito/internal/app"
 	"github.com/vkh/spacemosquito/internal/bootstrap"
+	"github.com/vkh/spacemosquito/internal/browse"
 	"github.com/vkh/spacemosquito/internal/catalogindex"
 	"github.com/vkh/spacemosquito/internal/config"
 	"github.com/vkh/spacemosquito/internal/contentmd"
@@ -157,6 +158,14 @@ func Run(args []string) int {
 			return 1
 		}
 		return runDeleteSpace(cfg, fs.Arg(0), *deleteFiles, log)
+	case "export-html":
+		fs := flag.NewFlagSet("export-html", flag.ExitOnError)
+		space := fs.String("space", "", "export only this space key")
+		if err := fs.Parse(args[2:]); err != nil || fs.NArg() != 1 {
+			fmt.Fprintln(os.Stderr, "usage: spacemosquito export-html [--space KEY] <dir>")
+			return 1
+		}
+		return runExportHTML(cfg, fs.Arg(0), *space, log)
 	case "cron":
 		if len(args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: spacemosquito cron <list|config|run-now>")
@@ -582,7 +591,16 @@ func runReindex(cfg *config.Config, withContent bool, log *zap.Logger) {
 			sugar.Errorw("catalog index failed", "error", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Catalog index written: %s\n", filepath.Join(savedBase, "index.html"))
+		fmt.Printf("Catalog index written: %s\n", filepath.Join(savedBase, "index.md"))
+		// Pages are browsed through serve (ADR-018); drop HTML that older
+		// versions generated into the catalog.
+		removed, err := catalogindex.RemoveLegacyHTML(savedBase)
+		if err != nil {
+			sugar.Warnw("remove generated html failed", "error", err)
+		}
+		if removed > 0 {
+			fmt.Printf("Removed %d generated HTML files (pages are rendered by serve; see export-html)\n", removed)
+		}
 	}
 
 	if err := database.IndexAllPageContents(ctx); err != nil {
@@ -858,6 +876,7 @@ func printUsage() {
 	fmt.Println("  get-page <id>  Get page by Confluence ID (optional: <space-key>)")
 	fmt.Println("  reindex        Rebuild FTS indexes (--content regenerates Markdown too)")
 	fmt.Println("  delete-space [--delete-files] <space-key>  Remove a space from the catalog (saved files kept unless --delete-files)")
+	fmt.Println("  export-html [--space KEY] <dir>  Write the catalog as static HTML for browsing without serve")
 	fmt.Println("  stats          Show database statistics")
 	fmt.Println("  cron list      List scheduled crawl jobs")
 	fmt.Println("  cron config    Show cron configuration")
@@ -872,4 +891,28 @@ func printUsage() {
 	fmt.Println("  MIGRATIONS_PATH              Override migrations root directory")
 	fmt.Println("  CRON_CONFIG_PATH             Override cron overrides file")
 	fmt.Println("  CHROMIUM_PATH                Override Chromium/Chrome executable")
+}
+
+func runExportHTML(cfg *config.Config, outDir, spaceKey string, log *zap.Logger) int {
+	sugar := logging.New("export", log)
+	database, err := datastore.Open(cfg, log)
+	if err != nil {
+		sugar.Errorw("failed to connect to database", "error", err)
+		return 1
+	}
+	defer database.Close()
+	savedBase, err := paths.ResolveSaved(cfg)
+	if err != nil {
+		sugar.Errorw("resolve saved path failed", "error", err)
+		return 1
+	}
+	site := &browse.Site{DB: database, SavedBase: savedBase, Log: sugar}
+	res, err := site.Export(context.Background(), outDir, spaceKey)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "export failed: %v\n", err)
+		return 1
+	}
+	abs, _ := filepath.Abs(outDir)
+	fmt.Printf("Exported %d pages in %d spaces. Open %s\n", res.Pages, res.Spaces, filepath.Join(abs, "index.html"))
+	return 0
 }

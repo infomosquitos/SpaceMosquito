@@ -84,7 +84,8 @@ cask "spacemosquito" do
     5. Crawl a space from the popup's Spaces tab, or from the terminal:
          spacemosquito crawl "https://your-domain.atlassian.net/wiki/spaces/SPACEKEY"
        Then click 📖 next to the space to browse the saved pages
-       (or open ~/.spacemosquito/saved/index.html).
+       (served by spacemosquito serve at http://localhost:56403/browse/;
+       for a copy without the server: spacemosquito export-html ~/SpaceMosquito-export).
 
     6. Optional: connect AI agents via MCP at http://127.0.0.1:56403/mcp
        https://github.com/infomosquitos/spacemosquito/blob/main/docs/guides/configure-mcp.md

@@ -31,6 +31,7 @@ Prefer a **task doc** (`dev/tasks/…`) for short-lived design while building a 
 | 010 | HTML extraction — Trafilatura-style | Accepted |
 | 011 | Go backend language | Accepted |
 | 013 | Go Rod over ChromeDP | Accepted |
-| 015 | Saved page format with Markdown | Accepted |
+| 015 | Saved page format with Markdown | Accepted (`index.html` / HTML navigation superseded by 018) |
 | 016 | SQLite-only distribution | Accepted |
 | 017 | MCP transport — Streamable HTTP | Accepted |
+| 018 | Browse pages rendered on request from content.md | Accepted |
