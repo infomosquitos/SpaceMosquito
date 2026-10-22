@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-10-22
+
 ### Changed
 - Page trees mark pages without children with a dot, aligned with the arrows of expandable pages.
 - Horizontal rules on saved pages are left-aligned with the text instead of centered.
