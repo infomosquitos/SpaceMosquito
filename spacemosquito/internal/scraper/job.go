@@ -354,6 +354,7 @@ func (r *CrawlRunner) Run(ctx context.Context, job *CrawlJob) error {
 	persistCtx := context.Background()
 	persistDiscoveryPagesTotal(persistCtx, r.manager.db, pageInfo.SpaceKey, pageInfo.SpaceName, job.SpaceURL, job.TotalPages, r.log)
 
+	scraper.saveFolders(pageInfo.SpaceKey, pageInfo.Folders)
 	index := scraper.startCatalogIndex(pageInfo.SpaceKey)
 	defer index.finish()
 

@@ -40,7 +40,24 @@ func (imageRule) Render(sel *goquery.Selection, ctx *RenderContext) (string, err
 	}
 	local := sanitizeAssetName(filename)
 
-	downloadURL := attachmentURL(ctx.BaseURL, ctx.PageID, filename, ctx.Cloud)
+	// <ri:attachment …><ri:page ri:content-title="Other page"/></ri:attachment>:
+	// the image is an attachment of another page (pasted from it). Download it
+	// from that page; when its ID is unknown, request nothing rather than a
+	// guaranteed 404 from this page.
+	pageID := ctx.PageID
+	if ref := findDescendant(att, "ri:page"); ref != nil {
+		pageID = 0
+		if title := strings.TrimSpace(ref.AttrOr("ri:content-title", "")); title != "" && ctx.ResolvePageID != nil {
+			pageID = ctx.ResolvePageID(strings.TrimSpace(ref.AttrOr("ri:space-key", "")), title)
+		}
+	} else if findDescendant(att, "ri:blog-post") != nil {
+		pageID = 0
+	}
+
+	downloadURL := ""
+	if pageID > 0 {
+		downloadURL = attachmentURL(ctx.BaseURL, pageID, filename, ctx.Cloud)
+	}
 	if downloadURL != "" {
 		ctx.RequestAsset(AssetRequest{Kind: "image", Filename: local, URL: downloadURL})
 	}

@@ -16,6 +16,9 @@ storage:
   # Page attachments (pptx, pdf, xlsx, …) larger than this are not downloaded
   # but linked to Confluence. Default 100; -1 = no limit.
   # max_attachment_mb: 100
+  # Pause before each image/attachment download, to stay below Confluence's
+  # rate limits (HTTP 429 also slows downloads down). Default 2500; -1 = none.
+  # asset_delay_ms: 2500
 
 session:
   # Generate: openssl rand -base64 32

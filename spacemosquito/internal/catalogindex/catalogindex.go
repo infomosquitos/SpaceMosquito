@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,10 +30,15 @@ const (
 // ErrNoSavedDir is returned by LoadSpace for a space without saved/<SPACE>.
 var ErrNoSavedDir = errors.New("space has no saved directory")
 
-// Node is one saved page in a space tree.
+// FolderDirPrefix starts the Dir of a folder node: folders have no saved
+// directory; browse serves them as FolderDirPrefix+ID.
+const FolderDirPrefix = "folder-"
+
+// Node is one saved page (or a Confluence folder) in a space tree.
 type Node struct {
 	Title    string
-	Dir      string // page directory name under the space directory
+	Dir      string // page directory name under the space directory; folder-<id> for folders
+	Folder   bool   // Confluence Cloud folder: no content, holds pages
 	Empty    bool   // Storage Format page without content of its own
 	History  store.PageHistory
 	Children []*Node
@@ -74,8 +80,12 @@ func loadSpace(ctx context.Context, db store.Store, savedBase string, sp store.S
 	if err != nil {
 		return nil, err
 	}
+	folders, err := db.ListFolders(ctx, sp.Key)
+	if err != nil {
+		return nil, err
+	}
 	tree := &Space{Key: sp.Key, Name: sp.Name, URL: sp.URL, LastCrawled: sp.LastCrawled}
-	tree.Roots, tree.Pages = BuildTree(pages, spaceDir)
+	tree.Roots, tree.Pages = BuildTree(pages, folders, spaceDir)
 	return tree, nil
 }
 
@@ -222,11 +232,13 @@ func listPages(ctx context.Context, db store.Store, spaceKey string) ([]store.Pa
 }
 
 // BuildTree arranges pages saved under spaceDir by parent, sorting siblings
-// by title. Pages whose parent was not saved become roots. Returns the roots
+// by title. Folders become nodes too (kept only when they hold pages); pages
+// whose parent is neither saved nor a folder become roots. Returns the roots
 // and the number of pages placed.
-func BuildTree(pages []store.Page, spaceDir string) ([]*Node, int) {
+func BuildTree(pages []store.Page, folders []store.Folder, spaceDir string) ([]*Node, int) {
 	nodes := map[int]*Node{}
 	var order []int
+	pageCount := 0
 	for _, p := range pages {
 		dir := pageDirName(p, spaceDir)
 		if dir == "" {
@@ -239,11 +251,26 @@ func BuildTree(pages []store.Page, spaceDir string) ([]*Node, int) {
 		empty := p.BodyFormat == "storage" && strings.TrimSpace(p.Content) == ""
 		nodes[p.ConfluenceID] = &Node{Title: title, Dir: dir, Empty: empty, History: p.History}
 		order = append(order, p.ConfluenceID)
+		pageCount++
 	}
 	parents := map[int]int{}
 	for _, p := range pages {
 		if p.ParentConfluenceID != nil {
 			parents[p.ConfluenceID] = *p.ParentConfluenceID
+		}
+	}
+	for _, f := range folders {
+		if nodes[f.ConfluenceID] != nil {
+			continue
+		}
+		title := f.Title
+		if title == "" {
+			title = "Folder"
+		}
+		nodes[f.ConfluenceID] = &Node{Title: title, Dir: FolderDirPrefix + strconv.Itoa(f.ConfluenceID), Folder: true}
+		order = append(order, f.ConfluenceID)
+		if f.ParentConfluenceID != nil {
+			parents[f.ConfluenceID] = *f.ParentConfluenceID
 		}
 	}
 
@@ -256,8 +283,23 @@ func BuildTree(pages []store.Page, spaceDir string) ([]*Node, int) {
 		}
 		roots = append(roots, n)
 	}
+	roots = pruneEmptyFolders(roots)
 	sortNodes(roots)
-	return roots, len(nodes)
+	return roots, pageCount
+}
+
+// pruneEmptyFolders drops folders that hold no saved page (directly or in
+// sub-folders).
+func pruneEmptyFolders(ns []*Node) []*Node {
+	out := ns[:0]
+	for _, n := range ns {
+		n.Children = pruneEmptyFolders(n.Children)
+		if n.Folder && len(n.Children) == 0 {
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
 }
 
 // createsCycle reports whether following saved parents from id returns to id.
@@ -330,7 +372,11 @@ func renderSpaceMarkdown(sp *Space) string {
 	var walk func(ns []*Node, depth int)
 	walk = func(ns []*Node, depth int) {
 		for _, n := range ns {
-			fmt.Fprintf(&b, "%s- [%s](%s)\n", strings.Repeat("  ", depth), mdEscaper.Replace(n.Title), href(n.Dir, "content.md"))
+			if n.Folder {
+				fmt.Fprintf(&b, "%s- 📁 %s\n", strings.Repeat("  ", depth), mdEscaper.Replace(n.Title))
+			} else {
+				fmt.Fprintf(&b, "%s- [%s](%s)\n", strings.Repeat("  ", depth), mdEscaper.Replace(n.Title), href(n.Dir, "content.md"))
+			}
 			walk(n.Children, depth+1)
 		}
 	}

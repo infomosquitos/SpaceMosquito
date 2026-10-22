@@ -482,6 +482,7 @@ func runCrawl(cfg *config.Config, spaceURL string, force bool, log *zap.Logger) 
 
 	storageWriter := storage.NewWriter(cfg.Storage.BasePath, sugar)
 	assetDownloader := storage.NewAssetDownloader(sugar)
+	assetDownloader.SetDelay(cfg.Storage.AssetDelay())
 	assetDownloader.SetForce(force)
 
 	s := scraper.New(cfg, database, storageWriter, assetDownloader, sugar)
@@ -549,6 +550,7 @@ func runCrawlPage(cfg *config.Config, spaceKey string, confluenceID int, log *za
 
 	storageWriter := storage.NewWriter(cfg.Storage.BasePath, sugar)
 	assetDownloader := storage.NewAssetDownloader(sugar)
+	assetDownloader.SetDelay(cfg.Storage.AssetDelay())
 
 	s := scraper.New(cfg, database, storageWriter, assetDownloader, sugar)
 

@@ -63,6 +63,8 @@ func newSite(t *testing.T) *Site {
 		"12-Rendered/metadata.json":                  `{"title":"Rendered","body_format":"rendered"}`,
 		"12-Rendered/index.html":                     "<p>extracted</p>",
 		"12-Rendered/content.md":                     "Rendered body",
+		"13-In folder/metadata.json":                 `{"title":"In folder","body_format":"storage"}`,
+		"13-In folder/content.md":                    "Inside a folder.",
 	}
 	for rel, body := range files {
 		p := filepath.Join(saved, "TST", rel)
@@ -77,6 +79,7 @@ func newSite(t *testing.T) *Site {
 		t.Fatal(err)
 	}
 	parent := 10
+	folder := 500
 	created := time.Date(2022, 3, 12, 12, 0, 0, 0, time.UTC)
 	updated := time.Date(2024, 10, 3, 12, 0, 0, 0, time.UTC)
 	for _, p := range []store.Page{
@@ -84,10 +87,15 @@ func newSite(t *testing.T) *Site {
 		{SpaceID: spaceID, ConfluenceID: 11, Title: "Child > X", Content: "Intro", ParentConfluenceID: &parent, BodyFormat: "storage", FileDir: filepath.Join(saved, "TST", childDir),
 			History: store.PageHistory{CreatedBy: "Ann <A>", CreatedAt: &created, UpdatedBy: "Bob", UpdatedAt: &updated}},
 		{SpaceID: spaceID, ConfluenceID: 12, Title: "Rendered", Content: "Rendered body", BodyFormat: "rendered", FileDir: filepath.Join(saved, "TST", "12-Rendered")},
+		{SpaceID: spaceID, ConfluenceID: 13, Title: "In folder", Content: "Inside a folder.", ParentConfluenceID: &folder, BodyFormat: "storage", FileDir: filepath.Join(saved, "TST", "13-In folder")},
 	} {
 		if err := db.UpsertPage(ctx, &p); err != nil {
 			t.Fatal(err)
 		}
+	}
+	// Confluence folder "Sprint 142" under Home, holding page 13.
+	if err := db.UpsertFolder(ctx, &store.Folder{SpaceID: spaceID, ConfluenceID: folder, Title: "Sprint 142", ParentConfluenceID: &parent}); err != nil {
+		t.Fatal(err)
 	}
 	return &Site{DB: db, SavedBase: saved, Log: logging.New("test", log)}
 }
@@ -109,12 +117,12 @@ func TestHandler_views(t *testing.T) {
 		not  []string
 	}{
 		{"/browse/", []string{
-			`<a href="TST/">Test Space (TST)</a>`, "3 pages", `class="sm-fullsearch" data-space=""`,
+			`<a href="TST/">Test Space (TST)</a>`, "4 pages", `class="sm-fullsearch" data-space=""`,
 			`href=".static/browse.css?v=`,
 		}, nil},
 		{"/browse/TST/", []string{
-			`<a href="../">← All spaces</a>`, `<h1>Test Space (TST)</h1>`, "3 pages",
-			`<details open><summary><a href="10-Home/">Home</a> <span class="sm-count">(1)</span>`,
+			`<a href="../">← All spaces</a>`, `<h1>Test Space (TST)</h1>`, "4 pages",
+			`<details open><summary><a href="10-Home/">Home</a> <span class="sm-count">(2)</span>`, `<a href="folder-500/">📁 Sprint 142</a>`,
 			`<a href="11-Child%20%3E%20X/">Child &gt; X</a>`, `class="sm-fullsearch" data-space="TST"`,
 			"Expand all", `href="../.static/browse.css?v=`,
 		}, nil},
@@ -125,7 +133,7 @@ func TestHandler_views(t *testing.T) {
 			// Sidebar: path to the current page open, current highlighted.
 			`<details open><summary><a href="../10-Home/">Home</a>`,
 			`<a href="../11-Child%20%3E%20X/" class="sm-current" aria-current="page">Child &gt; X</a>`,
-			`class="sm-quick" data-space="TST" data-all="../"`, "3 pages",
+			`class="sm-quick" data-space="TST" data-all="../"`, "4 pages",
 			`<p class="sm-meta sm-byline">Created by Ann &lt;A&gt; on 12 Mar 2022 · Last updated by Bob on 3 Oct 2024</p>`,
 			// File preview (inline PDF via browse.js) and the Attachments section.
 			`<a href="assets/attachments/Spec.pdf" title="attachment">Spec.pdf</a>`,
@@ -142,6 +150,13 @@ func TestHandler_views(t *testing.T) {
 			`<li><a href="../11-Child%20%3E%20X/">Child &gt; X</a></li>`,
 		}, nil},
 		{"/browse/TST/12-Rendered/", []string{"<p>Rendered body</p>", "<h1>Rendered</h1>"}, nil},
+		// Confluence folder: a tree node with its own page listing its content.
+		{"/browse/TST/folder-500/", []string{
+			"<h1>📁 Sprint 142</h1>", "Folder in Confluence. It contains:",
+			`<li><a href="../13-In%20folder/">In folder</a></li>`,
+			`<a href="https://example.atlassian.net/wiki/spaces/TST/folder/500">View in Confluence</a>`,
+			`class="sm-current" aria-current="page">📁 Sprint 142</a>`,
+		}, nil},
 	} {
 		rec := get(t, s, tc.path)
 		if rec.Code != http.StatusOK {
@@ -234,8 +249,8 @@ func TestExport(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Spaces != 1 || res.Pages != 3 {
-		t.Fatalf("exported %+v, want 1 space, 3 pages", res)
+	if res.Spaces != 1 || res.Pages != 4 {
+		t.Fatalf("exported %+v, want 1 space, 4 pages", res)
 	}
 	read := func(rel string) string {
 		t.Helper()

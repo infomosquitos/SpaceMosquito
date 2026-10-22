@@ -88,7 +88,9 @@ func (s *Site) Export(ctx context.Context, outDir, spaceKey string) (ExportResul
 				if err := copyTree(filepath.Join(s.SavedBase, sp.Key, n.Dir, "assets"), filepath.Join(pageOut, "assets")); err != nil {
 					return fmt.Errorf("copy assets of %s: %w", n.Dir, err)
 				}
-				res.Pages++
+				if !n.Folder {
+					res.Pages++
+				}
 				if err := walk(n.Children); err != nil {
 					return err
 				}

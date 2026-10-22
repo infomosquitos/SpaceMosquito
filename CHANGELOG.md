@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Faster crawls: the pause before each image/attachment download is 2.5 s instead of 5 s, configurable as `storage.asset_delay_ms` (`-1` = no pause).
+
+### Added
+- Confluence Cloud folders: crawls look up the folders pages sit in (one request per folder) and the page tree, sidebar and `index.md` show them with 📁; a folder page lists its contents. Pages inside folders no longer appear at the top level of the tree. Existing spaces get their folders on the next crawl.
+- Throttling support: when Confluence answers HTTP 429, page requests and downloads wait as long as its `Retry-After` header asks and retry; downloads also slow down for the rest of the crawl (pause doubled, up to 30 s).
+
+### Fixed
+- Images pasted from another Confluence page are downloaded from that page (looked up by title, once per crawl) instead of failing with HTTP 404.
+- Downloads that cannot succeed (404 and other client errors) are no longer retried four times with growing pauses, which slowed crawls down; rate limits and server errors are still retried.
+- The server no longer logs an error when the extension asks for the session of a page that is not a Confluence site (e.g. the browse UI).
+
 ## [0.8.5] - 2026-10-22
 
 ### Changed

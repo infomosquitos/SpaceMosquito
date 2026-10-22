@@ -12,6 +12,7 @@ import (
 	"github.com/vkh/spacemosquito/internal/config"
 	"github.com/vkh/spacemosquito/internal/confluence"
 	"github.com/vkh/spacemosquito/internal/contentmd/csf"
+	"github.com/vkh/spacemosquito/internal/ratelimit"
 	"github.com/vkh/spacemosquito/internal/session"
 	"github.com/vkh/spacemosquito/internal/storage"
 )
@@ -48,7 +49,7 @@ func (s *Scraper) fetchAttachments(baseURL string, pageID int, sess *session.Ses
 		for k, v := range sess.AsHeaders() {
 			req.Header.Set(k, v)
 		}
-		resp, err := client.Do(req)
+		resp, err := ratelimit.Do(client, req, s.logThrottle)
 		if err != nil {
 			return nil, err
 		}

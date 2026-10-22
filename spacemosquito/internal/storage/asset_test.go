@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/vkh/spacemosquito/internal/ratelimit"
 	"github.com/vkh/spacemosquito/pkg/logging"
 )
 
@@ -400,5 +401,63 @@ func TestAssetDownloader_DownloadFile(t *testing.T) {
 	}
 	if _, err := os.Stat(login); !os.IsNotExist(err) {
 		t.Fatal("login page saved")
+	}
+}
+
+// A missing file (404) fails at once; server errors are retried.
+func TestAssetDownloader_noRetryOnPermanentErrors(t *testing.T) {
+	hits := map[string]int{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits[r.URL.Path]++
+		if r.URL.Path == "/missing.png" {
+			http.NotFound(w, r)
+			return
+		}
+		http.Error(w, "busy", http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+	d := NewAssetDownloader(logging.Sugar{})
+	d.SetClientForTest(srv.Client())
+	d.maxRetries = 2
+	dir := t.TempDir()
+	if err := d.DownloadAs(filepath.Join(dir, "a.png"), srv.URL+"/missing.png"); err == nil || hits["/missing.png"] != 1 {
+		t.Fatalf("404: err=%v after %d requests, want 1", err, hits["/missing.png"])
+	}
+	if err := d.DownloadAs(filepath.Join(dir, "b.png"), srv.URL+"/busy.png"); err == nil || hits["/busy.png"] != 3 {
+		t.Fatalf("503: err=%v after %d requests, want 3", err, hits["/busy.png"])
+	}
+}
+
+// HTTP 429: wait as Confluence asks, then download more slowly.
+func TestAssetDownloader_throttled(t *testing.T) {
+	var waits []time.Duration
+	ratelimit.Sleep = func(d time.Duration) { waits = append(waits, d) }
+	defer func() { ratelimit.Sleep = time.Sleep }()
+	hits := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		hits++
+		if hits == 1 {
+			w.Header().Set("Retry-After", "9")
+			w.WriteHeader(http.StatusTooManyRequests)
+			return
+		}
+		_, _ = w.Write([]byte("png"))
+	}))
+	defer srv.Close()
+	d := NewAssetDownloader(logging.Sugar{})
+	d.SetClientForTest(srv.Client())
+	d.SetDelay(0)
+	if err := d.DownloadAs(filepath.Join(t.TempDir(), "a.png"), srv.URL+"/a.png"); err != nil {
+		t.Fatal(err)
+	}
+	if hits != 2 || len(waits) == 0 || waits[0] != 9*time.Second {
+		t.Fatalf("hits=%d waits=%v", hits, waits)
+	}
+	if d.rateLimit != DefaultAssetDelay {
+		t.Fatalf("delay after throttling = %v, want %v", d.rateLimit, DefaultAssetDelay)
+	}
+	d.throttled(http.Header{}, "x")
+	if d.rateLimit != 2*DefaultAssetDelay {
+		t.Fatalf("delay not raised again: %v", d.rateLimit)
 	}
 }

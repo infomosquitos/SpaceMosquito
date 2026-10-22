@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/vkh/spacemosquito/internal/catalogindex"
+	"github.com/vkh/spacemosquito/internal/confluence"
 	"github.com/vkh/spacemosquito/internal/contentmd"
 	"github.com/vkh/spacemosquito/internal/contentmd/csf"
 	"github.com/vkh/spacemosquito/internal/spaceops"
@@ -233,6 +234,7 @@ type common struct {
 type viewNode struct {
 	Title    string
 	Href     string
+	Folder   bool
 	Open     bool
 	Current  bool
 	Children []*viewNode
@@ -260,6 +262,7 @@ type pageView struct {
 	Title, SourceURL, Byline                             string
 	Body                                                 template.HTML
 	Children                                             []*viewNode
+	Folder                                               bool // Confluence folder: lists its pages
 	Files                                                []fileView
 	Tree                                                 []*viewNode
 }
@@ -325,14 +328,27 @@ func renderSpaceTree(w io.Writer, sp *catalogindex.Space, static bool) error {
 }
 
 func (s *Site) renderPage(ctx context.Context, w io.Writer, key, dir string, static bool) error {
-	if st, err := os.Stat(filepath.Join(s.SavedBase, key, dir)); err != nil || !st.IsDir() {
+	isFolder := strings.HasPrefix(dir, catalogindex.FolderDirPrefix)
+	if st, err := os.Stat(filepath.Join(s.SavedBase, key, dir)); !isFolder && (err != nil || !st.IsDir()) {
 		return errNotFound
 	}
 	sp, err := s.loadSpace(ctx, key)
 	if err != nil {
 		return err
 	}
+	if isFolder && findPath(sp.Roots, dir) == nil {
+		return errNotFound
+	}
 	return renderPageView(w, s.SavedBase, sp, dir, static)
+}
+
+// folderURL is a folder's Confluence page, derived from the space URL.
+func folderURL(spaceURL, key, dir string) string {
+	base := confluence.BaseURL(spaceURL)
+	if base == "" {
+		return ""
+	}
+	return base + "/wiki/spaces/" + url.PathEscape(key) + "/folder/" + strings.TrimPrefix(dir, catalogindex.FolderDirPrefix)
 }
 
 func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir string, static bool) error {
@@ -376,6 +392,16 @@ func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir s
 		Tree:         viewTree(sp.Roots, "../", file, dir, func(_ int, n *catalogindex.Node) bool { return open[n] }, 0),
 	}
 
+	if node != nil && node.Folder {
+		// A folder has no content: list what it holds.
+		v.Folder = true
+		v.SourceURL = folderURL(sp.URL, sp.Key, dir)
+		v.Children = viewTree(node.Children, "../", file, "", func(int, *catalogindex.Node) bool { return false }, 0)
+		for _, c := range v.Children {
+			c.Children = nil
+		}
+		return tmpl.ExecuteTemplate(w, "page", v)
+	}
 	if node != nil {
 		v.Byline = byline(node.History)
 	}
@@ -502,6 +528,7 @@ func viewTree(ns []*catalogindex.Node, prefix, file, current string, open func(i
 		out = append(out, &viewNode{
 			Title:    n.Title,
 			Href:     prefix + url.PathEscape(n.Dir) + "/" + file,
+			Folder:   n.Folder,
 			Open:     len(n.Children) > 0 && open(depth, n),
 			Current:  n.Dir == current,
 			Children: viewTree(n.Children, prefix, file, current, open, depth+1),

@@ -13,6 +13,7 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/go-rod/rod"
 	"github.com/vkh/spacemosquito/internal/confluence"
+	"github.com/vkh/spacemosquito/internal/ratelimit"
 	"github.com/vkh/spacemosquito/internal/session"
 	"path/filepath"
 )
@@ -23,6 +24,7 @@ type SpaceInfo struct {
 	SpaceName string
 	SpaceURL  string
 	Pages     []*Page
+	Folders   []Folder // Cloud folders holding pages
 }
 
 // discoverSpace attempts API discovery first, falls back to sidebar parsing if needed.
@@ -73,6 +75,7 @@ func (s *Scraper) discoverSpaceAPI(spaceURL string, sess *session.Session) (*Spa
 		SpaceName: spaceKey, // API doesn't easily give space name without another call
 		SpaceURL:  spaceURL,
 		Pages:     pages,
+		Folders:   s.fetchFolders(rootURL, pages, headers, sess.Flavor),
 	}, nil
 }
 
@@ -101,7 +104,7 @@ func (s *Scraper) fetchPageListAPI(rootURL, spaceKey string, headers map[string]
 		}
 
 		client := &http.Client{Timeout: 30 * time.Second}
-		resp, err := client.Do(req)
+		resp, err := ratelimit.Do(client, req, s.logThrottle)
 		if err != nil {
 			return nil, err
 		}

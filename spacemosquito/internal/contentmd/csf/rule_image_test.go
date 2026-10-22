@@ -63,3 +63,27 @@ func TestImage_noBaseURLStillLinksNoDownload(t *testing.T) {
 		t.Fatalf("no download expected without base/pageID, got %d", len(assets))
 	}
 }
+
+// Images pasted from another page are that page's attachments.
+func TestImage_attachmentOfOtherPage(t *testing.T) {
+	in := `<ac:image ac:alt="a.png"><ri:attachment ri:filename="a.png"><ri:page ri:content-title="Import flow for deliveries" /></ri:attachment></ac:image>`
+	var asked []string
+	ctx := &RenderContext{PageID: 1, BaseURL: "https://x.atlassian.net", Cloud: true, ResolvePageID: func(space, title string) int {
+		asked = append(asked, space+"|"+title)
+		return 777
+	}}
+	got, assets := convert(t, in, ctx)
+	if !strings.Contains(got, "![a.png](assets/images/a.png)") {
+		t.Fatalf("image link: %q", got)
+	}
+	if len(assets) != 1 || assets[0].URL != "https://x.atlassian.net/wiki/download/attachments/777/a.png" {
+		t.Fatalf("asset requests = %+v", assets)
+	}
+	if len(asked) != 1 || asked[0] != "|Import flow for deliveries" {
+		t.Fatalf("resolver asked %v", asked)
+	}
+	// Unknown page (offline reindex, lookup failed): no request that would 404.
+	if _, assets := convert(t, in, &RenderContext{PageID: 1, BaseURL: "https://x.atlassian.net", Cloud: true}); len(assets) != 0 {
+		t.Fatalf("requested an attachment of an unknown page: %+v", assets)
+	}
+}

@@ -17,6 +17,7 @@ import (
 	"github.com/vkh/spacemosquito/internal/confluence"
 	"github.com/vkh/spacemosquito/internal/contentmd"
 	"github.com/vkh/spacemosquito/internal/contentmd/csf"
+	"github.com/vkh/spacemosquito/internal/ratelimit"
 	"github.com/vkh/spacemosquito/internal/session"
 	"github.com/vkh/spacemosquito/internal/storage"
 	"github.com/vkh/spacemosquito/internal/store"
@@ -47,6 +48,8 @@ type Page struct {
 	History store.PageHistory `json:"history,omitempty"`
 	// Files are the page's file attachments (API pages only).
 	Files []attachmentFile `json:"-"`
+	// resolvePageID finds other pages by title (API pages only).
+	resolvePageID func(spaceKey, title string) int
 }
 
 // CrawlStats tracks crawl progress.
@@ -72,6 +75,7 @@ type Scraper struct {
 	stats   CrawlStats
 	mu      sync.Mutex
 	force   bool
+	pageIDs pageIDCache // page IDs by title, for attachments of other pages
 }
 
 // SetForce makes the next crawl re-scrape every page, ignoring the unchanged
@@ -332,6 +336,7 @@ func (s *Scraper) CrawlSpace(spaceURL string, sess *session.Session) error {
 			"error", err)
 	}
 
+	s.saveFolders(pageInfo.SpaceKey, pageInfo.Folders)
 	index := s.startCatalogIndex(pageInfo.SpaceKey)
 	defer index.finish()
 
@@ -478,7 +483,7 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 	}
 
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := ratelimit.Do(client, req, s.logThrottle)
 	if err != nil {
 		return err
 	}
@@ -567,6 +572,8 @@ func (s *Scraper) ScrapePageAPI(pg *Page, spaceKey, spaceURL string, sess *sessi
 	pg.CleanHTML = cleanHTML
 	pg.Images = images
 	pg.Attachments = attachments
+
+	pg.resolvePageID = s.pageIDResolver(baseURL, spaceKey, sess)
 
 	// File attachments (pptx, pdf, …): best-effort, a failed listing still
 	// saves the page.
@@ -746,6 +753,8 @@ func (s *Scraper) renderMarkdown(pg *Page, spaceURL string, cloud bool) (string,
 			BaseURL: extractConfluenceBaseURL(spaceURL),
 			Cloud:   cloud,
 			Files:   s.fileLinks(pg.Files),
+
+			ResolvePageID: pg.resolvePageID,
 		}
 		md, assets, err := csf.CSFToMarkdown(pg.RawHTML, ctx)
 		if err != nil {

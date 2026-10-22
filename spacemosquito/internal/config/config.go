@@ -46,6 +46,24 @@ type StorageConfig struct {
 	// crawls download; larger files are linked to Confluence instead.
 	// 0 = default (DefaultMaxAttachmentMB), -1 = no limit.
 	MaxAttachmentMB int `yaml:"max_attachment_mb"`
+	// AssetDelayMS is the pause before each image/attachment download, to stay
+	// below Confluence's rate limits. 0 = default (DefaultAssetDelayMS),
+	// -1 = no pause. Throttling (HTTP 429) still slows downloads down.
+	AssetDelayMS int `yaml:"asset_delay_ms"`
+}
+
+// DefaultAssetDelayMS is the download pause when none is configured.
+const DefaultAssetDelayMS = 2500
+
+// AssetDelay returns the pause before each asset download.
+func (s StorageConfig) AssetDelay() time.Duration {
+	switch {
+	case s.AssetDelayMS < 0:
+		return 0
+	case s.AssetDelayMS == 0:
+		return DefaultAssetDelayMS * time.Millisecond
+	}
+	return time.Duration(s.AssetDelayMS) * time.Millisecond
 }
 
 // DefaultMaxAttachmentMB is the attachment size limit when none is configured.

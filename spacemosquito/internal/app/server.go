@@ -88,6 +88,7 @@ func setupComponents(cfg *config.Config, log *zap.Logger) (*serverComponents, er
 
 	storageWriter := storage.NewWriter(cfg.Storage.BasePath, logging.New("storage", log))
 	assetDownloader := storage.NewAssetDownloader(logging.New("assets", log))
+	assetDownloader.SetDelay(cfg.Storage.AssetDelay())
 	scraperInstance := scraper.New(cfg, database, storageWriter, assetDownloader, logging.New("scraper", log))
 
 	searchHandler := api.NewSearchHandler(database, sessionStore, cfg, logging.New("search", log))

@@ -23,6 +23,10 @@ type Store interface {
 	DeleteSpace(ctx context.Context, spaceKey string) error
 
 	UpsertPage(ctx context.Context, page *Page) error
+	// UpsertFolder saves a Confluence folder of a space's page tree.
+	UpsertFolder(ctx context.Context, folder *Folder) error
+	// ListFolders returns a space's folders.
+	ListFolders(ctx context.Context, spaceKey string) ([]Folder, error)
 	// UpdatePageHistory sets a saved page's Confluence history; empty
 	// fields keep the stored values. No error when the page is not saved.
 	UpdatePageHistory(ctx context.Context, spaceKey string, confluenceID int, h PageHistory) error

@@ -12,13 +12,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vkh/spacemosquito/internal/ratelimit"
 	"github.com/vkh/spacemosquito/pkg/logging"
 )
 
 const (
 	defaultMaxRetries = 3
 	defaultRetryDelay = 2 * time.Second
-	defaultRateLimit  = 5 * time.Second
+	// DefaultAssetDelay is the pause before each image/attachment download
+	// (storage.asset_delay_ms); throttling by Confluence raises it.
+	DefaultAssetDelay = 2500 * time.Millisecond
+	maxAssetDelay     = 30 * time.Second
 )
 
 type AssetDownloader struct {
@@ -46,6 +50,37 @@ func (d *AssetDownloader) SetAuthHeaders(h map[string]string) {
 	d.mu.Lock()
 	d.authHeaders = m
 	d.mu.Unlock()
+}
+
+// SetDelay sets the pause before each download (0 = none).
+func (d *AssetDownloader) SetDelay(delay time.Duration) {
+	if delay < 0 {
+		delay = 0
+	}
+	d.mu.Lock()
+	d.rateLimit = delay
+	d.mu.Unlock()
+}
+
+// throttled handles HTTP 429: it waits as long as Confluence asks
+// (Retry-After) and doubles the pause between downloads for the rest of the
+// run, up to maxAssetDelay, so the limit is not hit again right away.
+func (d *AssetDownloader) throttled(h http.Header, rawURL string) {
+	wait := ratelimit.RetryAfter(h, time.Now())
+	d.mu.Lock()
+	next := d.rateLimit * 2
+	if next < DefaultAssetDelay {
+		next = DefaultAssetDelay
+	}
+	if next > maxAssetDelay {
+		next = maxAssetDelay
+	}
+	d.rateLimit = next
+	d.mu.Unlock()
+	if d.log.Enabled() {
+		d.log.Warnw("confluence is throttling downloads, waiting", "url", rawURL, "wait", wait.String(), "new_delay", next.String())
+	}
+	ratelimit.Sleep(wait)
 }
 
 // SetForce controls whether existing on-disk assets are re-downloaded.
@@ -82,6 +117,13 @@ func (d *AssetDownloader) get(rawURL string) (*http.Response, error) {
 	return d.client.Do(req)
 }
 
+// retryableStatus reports whether a failed download may succeed when tried
+// again: rate limiting and server errors. Others (404 missing, 403 denied, …)
+// fail at once instead of retrying with growing delays.
+func retryableStatus(code int) bool {
+	return code == http.StatusTooManyRequests || code == http.StatusRequestTimeout || code >= 500
+}
+
 // looksLikeLoginPage reports whether a response is an HTML page rather than the
 // requested binary asset — the tell-tale sign of an unauthenticated request
 // being answered with an SSO login/redirect page.
@@ -95,7 +137,7 @@ func NewAssetDownloader(log logging.Sugar) *AssetDownloader {
 		log:        log,
 		maxRetries: defaultMaxRetries,
 		retryDelay: defaultRetryDelay,
-		rateLimit:  defaultRateLimit,
+		rateLimit:  DefaultAssetDelay,
 	}
 }
 
@@ -211,6 +253,11 @@ func (d *AssetDownloader) Download(destDir, rawURL string) (string, error) {
 					"url", rawURL,
 					"status", resp.StatusCode,
 					"attempt", attempt+1)
+			}
+			if resp.StatusCode == http.StatusTooManyRequests {
+				d.throttled(resp.Header, rawURL)
+			} else if !retryableStatus(resp.StatusCode) {
+				return "", fmt.Errorf("download %s: %w", rawURL, lastErr)
 			}
 			continue
 		}
@@ -332,6 +379,11 @@ func (d *AssetDownloader) DownloadAs(destPath, rawURL string) error {
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
 			lastErr = fmt.Errorf("HTTP %d", resp.StatusCode)
+			if resp.StatusCode == http.StatusTooManyRequests {
+				d.throttled(resp.Header, rawURL)
+			} else if !retryableStatus(resp.StatusCode) {
+				return fmt.Errorf("download %s: %w", rawURL, lastErr)
+			}
 			continue
 		}
 		if looksLikeLoginPage(resp) {
@@ -416,19 +468,27 @@ func (d *AssetDownloader) DownloadFile(destPath, rawURL string, size int64) erro
 	if fi, err := os.Stat(destPath); err == nil && !force && fi.Size() > 0 && (size <= 0 || fi.Size() == size) {
 		return nil
 	}
-	d.rateLimitWait()
-	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
-	if err != nil {
-		return err
-	}
-	d.mu.Lock()
-	for k, v := range d.authHeaders {
-		req.Header.Set(k, v)
-	}
-	d.mu.Unlock()
-	resp, err := client.Do(req)
-	if err != nil {
-		return fmt.Errorf("download %s: %w", rawURL, err)
+	var resp *http.Response
+	for attempt := 1; ; attempt++ {
+		d.rateLimitWait()
+		req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+		if err != nil {
+			return err
+		}
+		d.mu.Lock()
+		for k, v := range d.authHeaders {
+			req.Header.Set(k, v)
+		}
+		d.mu.Unlock()
+		resp, err = client.Do(req)
+		if err != nil {
+			return fmt.Errorf("download %s: %w", rawURL, err)
+		}
+		if resp.StatusCode != http.StatusTooManyRequests || attempt >= ratelimit.MaxAttempts {
+			break
+		}
+		resp.Body.Close()
+		d.throttled(resp.Header, rawURL)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

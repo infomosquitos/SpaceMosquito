@@ -793,3 +793,41 @@ func buildFTSQuery(q string) string {
 	}
 	return strings.Join(words, " AND ")
 }
+
+// UpsertFolder saves a Confluence folder (title and parent may change).
+func (d *DB) UpsertFolder(ctx context.Context, f *store.Folder) error {
+	_, err := d.sql.ExecContext(ctx,
+		`INSERT INTO folders (space_id, confluence_id, title, parent_confluence_id, updated_at)
+		 VALUES (?, ?, ?, ?, ?)
+		 ON CONFLICT (space_id, confluence_id) DO UPDATE SET
+		   title=excluded.title,
+		   parent_confluence_id=excluded.parent_confluence_id,
+		   updated_at=excluded.updated_at`,
+		f.SpaceID.String(), f.ConfluenceID, f.Title, f.ParentConfluenceID, time.Now().UTC().Format(time.RFC3339))
+	return err
+}
+
+// ListFolders returns the folders of a space.
+func (d *DB) ListFolders(ctx context.Context, spaceKey string) ([]store.Folder, error) {
+	rows, err := d.sql.QueryContext(ctx,
+		`SELECT f.space_id, f.confluence_id, f.title, f.parent_confluence_id
+		 FROM folders f JOIN spaces s ON s.id = f.space_id
+		 WHERE s.key = ?`, spaceKey)
+	if err != nil {
+		return nil, fmt.Errorf("list folders: %w", err)
+	}
+	defer rows.Close()
+	var out []store.Folder
+	for rows.Next() {
+		var f store.Folder
+		var spaceID string
+		if err := rows.Scan(&spaceID, &f.ConfluenceID, &f.Title, &f.ParentConfluenceID); err != nil {
+			return nil, err
+		}
+		if f.SpaceID, err = uuid.Parse(spaceID); err != nil {
+			return nil, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
+}

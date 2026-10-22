@@ -33,6 +33,10 @@ type RenderContext struct {
 	// filename. File previews, attachment links and the attachments macro
 	// link them; unknown files render as their name.
 	Files map[string]FileLink
+	// ResolvePageID finds the ID of another page by space key ("" = this
+	// space) and title, for attachments that belong to it (images pasted from
+	// another page). 0 = unknown; nil during offline reindex.
+	ResolvePageID func(spaceKey, title string) int
 
 	registry *Registry
 	assets   []AssetRequest

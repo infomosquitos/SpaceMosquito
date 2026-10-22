@@ -54,6 +54,15 @@ type PageSummary struct {
 	UpdatedAt          time.Time `db:"updated_at"`
 }
 
+// Folder is a Confluence Cloud folder: a node of the page tree without
+// content. Pages inside it have it as ParentConfluenceID.
+type Folder struct {
+	SpaceID            uuid.UUID
+	ConfluenceID       int
+	Title              string
+	ParentConfluenceID *int
+}
+
 // PageHistory is who created and last updated a page in Confluence, and
 // when. Empty names and nil times mean unknown (e.g. browser-fallback pages).
 type PageHistory struct {

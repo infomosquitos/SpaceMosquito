@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vkh/spacemosquito/internal/ratelimit"
 	"github.com/vkh/spacemosquito/internal/session"
 )
 
@@ -51,7 +52,7 @@ func FetchContentVersion(sess *session.Session, spaceURL string, confluenceID in
 	}
 
 	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	resp, err := ratelimit.Do(client, req, nil)
 	if err != nil {
 		return nil, err
 	}

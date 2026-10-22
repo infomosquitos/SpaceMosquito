@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -192,7 +193,13 @@ func (h *Handler) SessionStatus(w http.ResponseWriter, r *http.Request) {
 
 	sess, err := h.store.GetForURL(encKey, confluenceURL)
 	if err != nil {
-		h.log.Errorw("session status: load failed", "error", err)
+		// The popup asks for whatever tab is open; a page that is not a
+		// captured Confluence site (e.g. the browse UI) is not an error.
+		if errors.Is(err, session.ErrNoSessionForHost) {
+			h.log.Debugw("session status: no session for host", "url", confluenceURL)
+		} else {
+			h.log.Errorw("session status: load failed", "error", err)
+		}
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"valid":   false,
 			"message": err.Error(),

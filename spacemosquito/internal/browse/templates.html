@@ -9,7 +9,7 @@
 </head>
 {{end}}
 
-{{define "link"}}<a href="{{.Href}}"{{if .Current}} class="sm-current" aria-current="page"{{end}}>{{.Title}}</a>{{end}}
+{{define "link"}}<a href="{{.Href}}"{{if .Current}} class="sm-current" aria-current="page"{{end}}>{{if .Folder}}📁 {{end}}{{.Title}}</a>{{end}}
 
 {{define "nodes"}}{{range .}}<li{{if not .Children}} class="sm-leaf"{{end}}>{{if .Children}}<details{{if .Open}} open{{end}}><summary>{{template "link" .}} <span class="sm-count">({{len .Children}})</span></summary><ul>
 {{template "nodes" .Children}}</ul></details>{{else}}{{template "link" .}}{{end}}</li>
@@ -74,13 +74,13 @@
 </div></div>
 {{end}}<header>
 <nav><a href="{{.RootHref}}">All spaces</a> · <a href="{{.SpaceHref}}">{{.Key}}</a>{{if .SourceURL}} · <a href="{{.SourceURL}}">View in Confluence</a>{{end}}</nav>
-<h1>{{.Title}}</h1>
+<h1>{{if .Folder}}📁 {{end}}{{.Title}}</h1>
 {{if .Byline}}<p class="sm-meta sm-byline">{{.Byline}}</p>
 {{end}}</header>
 <main>
-{{if .Body}}{{.Body}}{{else if .Children}}<p><em>This page has no content of its own. Child pages:</em></p>
+{{if .Body}}{{.Body}}{{else if .Children}}<p><em>{{if .Folder}}Folder in Confluence. It contains:{{else}}This page has no content of its own. Child pages:{{end}}</em></p>
 <ul>
-{{range .Children}}<li><a href="{{.Href}}">{{.Title}}</a></li>
+{{range .Children}}<li><a href="{{.Href}}">{{if .Folder}}📁 {{end}}{{.Title}}</a></li>
 {{end}}</ul>{{else}}<p><em>This page has no content of its own.</em></p>{{end}}
 {{if .Files}}<section class="sm-files">
 <h2>Attachments ({{len .Files}})</h2>

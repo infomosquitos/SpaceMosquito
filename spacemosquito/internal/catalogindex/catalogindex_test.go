@@ -38,7 +38,7 @@ func TestBuildTree(t *testing.T) {
 		{ConfluenceID: 6, Title: "Loop B", ParentConfluenceID: intp(5), FileDir: "/x/6-Loop"},
 		{ConfluenceID: 7, Title: "Not saved", FileDir: "/x/7-Gone"},
 	}
-	roots, n := catalogindex.BuildTree(pages, spaceDir)
+	roots, n := catalogindex.BuildTree(pages, nil, spaceDir)
 	if n != 6 {
 		t.Fatalf("placed %d pages, want 6 (unsaved page skipped)", n)
 	}
@@ -184,5 +184,59 @@ func TestRemoveLegacyHTML(t *testing.T) {
 		if got := err == nil; got != want {
 			t.Errorf("%s exists=%v, want %v", rel, got, want)
 		}
+	}
+}
+
+func TestBuildTree_folders(t *testing.T) {
+	spaceDir := t.TempDir()
+	mkdirs(t, spaceDir, "1-Test Docs", "2-CCP-761", "3-Loose")
+	pages := []store.Page{
+		{ConfluenceID: 1, Title: "Test Docs", FileDir: "/x/1-Test Docs"},
+		{ConfluenceID: 2, Title: "CCP-761", ParentConfluenceID: intp(100), FileDir: "/x/2-CCP-761"},
+		{ConfluenceID: 3, Title: "Loose", ParentConfluenceID: intp(999), FileDir: "/x/3-Loose"},
+	}
+	folders := []store.Folder{
+		{ConfluenceID: 100, Title: "Sprint 142", ParentConfluenceID: intp(200)},
+		{ConfluenceID: 200, Title: "Sprints", ParentConfluenceID: intp(1)},
+		{ConfluenceID: 300, Title: "Empty folder", ParentConfluenceID: intp(1)},
+	}
+	roots, n := catalogindex.BuildTree(pages, folders, spaceDir)
+	if n != 3 {
+		t.Fatalf("page count %d, want 3 (folders are not pages)", n)
+	}
+	if len(roots) != 2 || roots[0].Title != "Loose" || roots[1].Title != "Test Docs" {
+		t.Fatalf("roots: %+v", roots)
+	}
+	docs := roots[1]
+	if len(docs.Children) != 1 || !docs.Children[0].Folder || docs.Children[0].Title != "Sprints" || docs.Children[0].Dir != "folder-200" {
+		t.Fatalf("empty folder not pruned or folder missing: %+v", docs.Children)
+	}
+	sprint := docs.Children[0].Children[0]
+	if sprint.Title != "Sprint 142" || len(sprint.Children) != 1 || sprint.Children[0].Title != "CCP-761" {
+		t.Fatalf("nested folder: %+v", sprint)
+	}
+}
+
+func TestWriteSpace_folderInMarkdown(t *testing.T) {
+	db, saved := openDB(t)
+	ctx := context.Background()
+	spaceID, err := db.CreateSpace(ctx, "TST", "Test", "https://example.atlassian.net/wiki/spaces/TST")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spaceDir := filepath.Join(saved, "TST")
+	mkdirs(t, spaceDir, "2-Page")
+	if err := db.UpsertPage(ctx, &store.Page{SpaceID: spaceID, ConfluenceID: 2, Title: "Page", ParentConfluenceID: intp(100), FileDir: filepath.Join(spaceDir, "2-Page")}); err != nil {
+		t.Fatal(err)
+	}
+	if err := db.UpsertFolder(ctx, &store.Folder{SpaceID: spaceID, ConfluenceID: 100, Title: "Sprint 142"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := catalogindex.WriteSpace(ctx, db, saved, "TST"); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join(spaceDir, "index.md"))
+	if !strings.Contains(string(b), "- 📁 Sprint 142\n  - [Page](2-Page/content.md)") || !strings.Contains(string(b), "1 pages") {
+		t.Fatalf("index.md:\n%s", b)
 	}
 }
