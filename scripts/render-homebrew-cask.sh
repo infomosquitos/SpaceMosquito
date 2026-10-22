@@ -71,8 +71,11 @@ cask "spacemosquito" do
        Download it from https://github.com/infomosquitos/spacemosquito/releases/tag/v#{version}
          Firefox: spacemosquito-firefox-v#{version}.xpi
                   about:addons -> gear icon -> Install Add-on From File...
-         Chrome:  spacemosquito-chrome-v#{version}.zip, unzip it, then
-                  chrome://extensions -> Developer mode -> Load unpacked
+         Chrome:  spacemosquito-chrome-v#{version}.zip, unzip it into a folder you keep:
+                    mkdir -p ~/Applications/SpaceMosquito-Chrome
+                    unzip -o ~/Downloads/spacemosquito-chrome-v#{version}.zip -d ~/Applications/SpaceMosquito-Chrome
+                  chrome://extensions -> Developer mode -> Load unpacked ->
+                  select that folder (not the .zip)
        Details: https://github.com/infomosquitos/spacemosquito/blob/main/docs/INSTALL.md#browser-extension
 
     4. Log in to Confluence, open the SpaceMosquito extension popup and click
