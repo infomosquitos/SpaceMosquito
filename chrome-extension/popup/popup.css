@@ -606,7 +606,7 @@ body {
 
 .space-row-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto auto auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto auto auto auto;
   align-items: center;
   gap: 6px;
   padding: 8px 10px;
@@ -668,6 +668,23 @@ body {
 
 .space-cron-panel.hidden {
   display: none !important;
+}
+
+.space-delete-panel {
+  padding: 8px 10px 10px;
+  border-top: 1px solid var(--border);
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.space-delete-panel.hidden {
+  display: none !important;
+}
+
+.space-delete-panel .delete-actions {
+  display: flex;
+  gap: 6px;
 }
 
 .space-crawl-panel {

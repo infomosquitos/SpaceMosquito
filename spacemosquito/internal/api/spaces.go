@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/vkh/spacemosquito/internal/session"
+	"github.com/vkh/spacemosquito/internal/spaceops"
 	"github.com/vkh/spacemosquito/internal/store"
 	"github.com/vkh/spacemosquito/pkg/logging"
 )
@@ -64,16 +66,16 @@ func (h *spacesHandler) list(w http.ResponseWriter, r *http.Request) {
 		}
 
 		result = append(result, map[string]interface{}{
-			"space_key":       s.Key,
-			"space_name":      s.Name,
-			"space_url":       s.URL,
-			"pages_crawled":   pageCount,
-			"pages_total":     s.PagesTotal,
-			"pages_storage":   formats.Storage,
-			"pages_rendered":  formats.Rendered,
-			"last_crawled":    lastCrawledStr,
-			"created_at":      s.CreatedAt.Format(time.RFC3339),
-			"browse_path":     SpaceBrowsePath(h.savedBase, s.Key),
+			"space_key":      s.Key,
+			"space_name":     s.Name,
+			"space_url":      s.URL,
+			"pages_crawled":  pageCount,
+			"pages_total":    s.PagesTotal,
+			"pages_storage":  formats.Storage,
+			"pages_rendered": formats.Rendered,
+			"last_crawled":   lastCrawledStr,
+			"created_at":     s.CreatedAt.Format(time.RFC3339),
+			"browse_path":    SpaceBrowsePath(h.savedBase, s.Key),
 		})
 	}
 
@@ -116,14 +118,23 @@ func (h *spacesHandler) add(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// SpaceByIDHandler handles individual space endpoints.
-func SpaceByIDHandler(db store.Store, log logging.Sugar) http.HandlerFunc {
-	return (&spaceByIDHandler{log: log, db: db}).handle
+// ActiveCrawls reports whether a space is being crawled (scraper.CrawlJobManager).
+type ActiveCrawls interface {
+	HasActiveJob(spaceKey string) bool
+}
+
+// SpaceByIDHandler handles individual space endpoints. savedBase, cron and
+// crawls are used by DELETE; cron and crawls may be nil.
+func SpaceByIDHandler(db store.Store, savedBase string, cron spaceops.CronConfigs, crawls ActiveCrawls, log logging.Sugar) http.HandlerFunc {
+	return (&spaceByIDHandler{log: log, db: db, savedBase: savedBase, cron: cron, crawls: crawls}).handle
 }
 
 type spaceByIDHandler struct {
-	log logging.Sugar
-	db  store.Store
+	log       logging.Sugar
+	db        store.Store
+	savedBase string
+	cron      spaceops.CronConfigs
+	crawls    ActiveCrawls
 }
 
 func (h *spaceByIDHandler) handle(w http.ResponseWriter, r *http.Request) {
@@ -171,19 +182,45 @@ func (h *spaceByIDHandler) getStatus(w http.ResponseWriter, r *http.Request, spa
 	})
 }
 
+// delete removes the space from the catalog (see spaceops.Delete);
+// ?delete_files=1 also removes saved/<KEY>. Refused while the space is
+// being crawled, since the crawl would recreate it.
 func (h *spaceByIDHandler) delete(w http.ResponseWriter, r *http.Request, spaceKey string) {
-	ctx := context.Background()
-	if _, err := h.db.GetSpaceByKey(ctx, spaceKey); err != nil {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "space not found"})
+	if !spaceops.ValidKey(spaceKey) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid space key"})
+		return
+	}
+	if h.crawls != nil && h.crawls.HasActiveJob(spaceKey) {
+		writeJSON(w, http.StatusConflict, map[string]string{"error": "space is being crawled; stop the crawl first"})
 		return
 	}
 
-	if err := h.db.DeleteSpace(ctx, spaceKey); err != nil {
+	opts := spaceops.DeleteOptions{DeleteFiles: r.URL.Query().Get("delete_files") == "1"}
+	res, err := spaceops.Delete(r.Context(), h.db, h.savedBase, h.cron, spaceKey, opts)
+	if errors.Is(err, spaceops.ErrNotFound) {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "space not found"})
+		return
+	}
+	if errors.Is(err, spaceops.ErrInvalidKey) {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid space key"})
+		return
+	}
+	if !res.Deleted {
 		h.log.Errorw("delete space failed", "space_key", spaceKey, "error", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "failed to delete space"})
 		return
 	}
-
-	h.log.Infow("space deleted", "space_key", spaceKey)
-	writeJSON(w, http.StatusOK, map[string]string{"message": "space deleted"})
+	resp := map[string]interface{}{
+		"message":       "space deleted",
+		"space_key":     res.SpaceKey,
+		"pages_removed": res.Pages,
+		"files_deleted": res.FilesDeleted,
+	}
+	if err != nil {
+		// The space is removed; report leftovers (cron, files, index).
+		h.log.Warnw("space deleted with leftovers", "space_key", spaceKey, "error", err)
+		resp["warning"] = err.Error()
+	}
+	h.log.Infow("space deleted", "space_key", spaceKey, "pages", res.Pages, "files_deleted", res.FilesDeleted)
+	writeJSON(w, http.StatusOK, resp)
 }

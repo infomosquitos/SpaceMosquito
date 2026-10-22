@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/vkh/spacemosquito/pkg/logging"
 )
 
 func TestBrowseHandler(t *testing.T) {
@@ -93,5 +95,35 @@ func TestPageBrowsePath(t *testing.T) {
 	}
 	if got := PageBrowsePath(base, "TST", "/x/TST/99-Missing/index.html"); got != "" {
 		t.Fatalf("missing dir: got %q", got)
+	}
+}
+
+type busyCrawls map[string]bool
+
+func (b busyCrawls) HasActiveJob(key string) bool { return b[key] }
+
+func TestSpaceDelete_guards(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("DELETE /api/spaces/{key}", SpaceByIDHandler(nil, t.TempDir(), nil, busyCrawls{"BUSY": true}, logging.Sugar{}))
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	for _, tc := range []struct {
+		key  string
+		code int
+	}{
+		{"BUSY", http.StatusConflict},     // crawl running
+		{"%2E%2E", http.StatusBadRequest}, // ".."
+		{"a.b", http.StatusBadRequest},
+	} {
+		req, _ := http.NewRequest(http.MethodDelete, srv.URL+"/api/spaces/"+tc.key, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != tc.code {
+			t.Errorf("%s: status %d, want %d", tc.key, resp.StatusCode, tc.code)
+		}
 	}
 }

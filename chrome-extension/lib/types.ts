@@ -59,6 +59,14 @@ export interface CrawlSpace {
   browse_path?: string;
 }
 
+export interface DeleteSpaceResult {
+  space_key: string;
+  pages_removed: number;
+  files_deleted: boolean;
+  /** Set when the space was removed but cleanup (cron, files, index) was incomplete. */
+  warning?: string;
+}
+
 export interface CronSpaceConfig {
   space_key: string;
   space_url: string;

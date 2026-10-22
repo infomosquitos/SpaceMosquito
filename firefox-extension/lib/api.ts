@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { Cookie, Session, SessionStatus, CrawlJob, CrawlSpace, CronSpaceConfig } from './types';
+import { Cookie, Session, SessionStatus, CrawlJob, CrawlSpace, CronSpaceConfig, DeleteSpaceResult } from './types';
 
 export class ApiClient {
   private baseUrl: string = 'http://localhost:56403';
@@ -130,8 +130,10 @@ export class ApiClient {
     return this.request<CrawlSpace[]>('/api/spaces');
   }
 
-  async deleteSpace(spaceKey: string): Promise<void> {
-    await this.request(`/api/spaces/${encodeURIComponent(spaceKey)}`, {
+  /** Removes a space from the catalog; saved files are kept unless deleteFiles. */
+  async deleteSpace(spaceKey: string, deleteFiles = false): Promise<DeleteSpaceResult> {
+    const query = deleteFiles ? '?delete_files=1' : '';
+    return this.request<DeleteSpaceResult>(`/api/spaces/${encodeURIComponent(spaceKey)}${query}`, {
       method: 'DELETE',
     });
   }

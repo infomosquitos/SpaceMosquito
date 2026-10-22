@@ -18,11 +18,13 @@ import (
 	"github.com/vkh/spacemosquito/internal/catalogindex"
 	"github.com/vkh/spacemosquito/internal/config"
 	"github.com/vkh/spacemosquito/internal/contentmd"
+	"github.com/vkh/spacemosquito/internal/cron"
 	"github.com/vkh/spacemosquito/internal/datastore"
 	"github.com/vkh/spacemosquito/internal/paths"
 	"github.com/vkh/spacemosquito/internal/scraper"
 	"github.com/vkh/spacemosquito/internal/search"
 	"github.com/vkh/spacemosquito/internal/session"
+	"github.com/vkh/spacemosquito/internal/spaceops"
 	"github.com/vkh/spacemosquito/internal/storage"
 	"github.com/vkh/spacemosquito/internal/store"
 	"github.com/vkh/spacemosquito/pkg/logger"
@@ -147,6 +149,14 @@ func Run(args []string) int {
 		return runGetPage(cfg, args[2], spaceKey, log)
 	case "stats":
 		runStats(cfg, log)
+	case "delete-space":
+		fs := flag.NewFlagSet("delete-space", flag.ExitOnError)
+		deleteFiles := fs.Bool("delete-files", false, "also delete saved/<space-key> files")
+		if err := fs.Parse(args[2:]); err != nil || fs.NArg() != 1 {
+			fmt.Fprintln(os.Stderr, "usage: spacemosquito delete-space [--delete-files] <space-key>")
+			return 1
+		}
+		return runDeleteSpace(cfg, fs.Arg(0), *deleteFiles, log)
 	case "cron":
 		if len(args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: spacemosquito cron <list|config|run-now>")
@@ -683,6 +693,46 @@ func runStats(cfg *config.Config, log *zap.Logger) {
 	fmt.Println()
 }
 
+// runDeleteSpace removes a space via spaceops.Delete. It cannot see crawls
+// running inside `serve`; stop those first (the REST delete checks).
+func runDeleteSpace(cfg *config.Config, spaceKey string, deleteFiles bool, log *zap.Logger) int {
+	database, err := datastore.Open(cfg, log)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to connect to database: %v\n", err)
+		return 1
+	}
+	defer database.Close()
+
+	savedBase, err := paths.ResolveSaved(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "resolve saved path failed: %v\n", err)
+		return 1
+	}
+	cronPath, err := paths.ResolveCronConfig()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "resolve cron config path failed: %v\n", err)
+		return 1
+	}
+	cronConfigs := cron.NewManager(cronPath, logging.New("cron_config", log))
+
+	res, err := spaceops.Delete(context.Background(), database, savedBase, cronConfigs, spaceKey, spaceops.DeleteOptions{DeleteFiles: deleteFiles})
+	if !res.Deleted {
+		fmt.Fprintf(os.Stderr, "delete space %s: %v\n", spaceKey, err)
+		return 1
+	}
+	fmt.Printf("Deleted space %s (%d pages removed from catalog and search)\n", spaceKey, res.Pages)
+	switch {
+	case res.FilesDeleted:
+		fmt.Printf("Deleted saved files: %s\n", res.FilesDir)
+	case res.FilesDir != "":
+		fmt.Printf("Saved files kept: %s (use --delete-files to remove)\n", res.FilesDir)
+	}
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: %v\n", err)
+	}
+	return 0
+}
+
 func runCronList(cfg *config.Config, log *zap.Logger) {
 	sugar := logging.New("cron", log)
 
@@ -807,6 +857,7 @@ func printUsage() {
 	fmt.Println("  search <q>     Search pages (optional: <space-key> [--limit N])")
 	fmt.Println("  get-page <id>  Get page by Confluence ID (optional: <space-key>)")
 	fmt.Println("  reindex        Rebuild FTS indexes (--content regenerates Markdown too)")
+	fmt.Println("  delete-space [--delete-files] <space-key>  Remove a space from the catalog (saved files kept unless --delete-files)")
 	fmt.Println("  stats          Show database statistics")
 	fmt.Println("  cron list      List scheduled crawl jobs")
 	fmt.Println("  cron config    Show cron configuration")

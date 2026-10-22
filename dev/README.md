@@ -96,6 +96,8 @@ Catalog navigation (`saved/index.{html,md}`, `saved/<SPACE>/index.{html,md}`) is
 
 `serve` exposes the catalog read-only at `GET /browse/` (no directory listings; folders only via their `index.html`). `GET /api/spaces` reports `browse_path` (e.g. `/browse/KEY/`) once a space index exists; the extension's Spaces tab shows a 📖 button for it. Browsers do not let extensions open `file://` pages, hence the HTTP route.
 
+Removing a space (`spaceops.Delete`, used by `DELETE /api/spaces/{key}[?delete_files=1]`, the `delete-space` CLI and the extension 🗑 button) drops the space row, its pages and FTS entries (DB cascade + trigger), its per-space cron config, and its root-index entry; `saved/<KEY>` is deleted only on request. Keys must match `^~?[A-Za-z0-9_-]+$` so the folder can never resolve outside `saved/`. The REST delete returns 409 while that space is being crawled; the CLI cannot see `serve`'s crawls.
+
 Served index pages also show a content search box calling `GET /api/search` (hidden for `file://`). REST search adds `browse_url` per hit and, with `highlight=1`, keeps match markers U+E000/U+E001 in `excerpt` (`search.MatchStart`/`MatchEnd`; stripped by default, so MCP/CLI output is unchanged). The page renders results with DOM `textContent` only.
 
 Regenerate existing catalogs after upgrade:

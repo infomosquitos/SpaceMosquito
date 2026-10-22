@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Remove a space: 🗑 in the extension's **Spaces** tab (with confirmation and an optional "also delete saved files"), `spacemosquito delete-space [--delete-files] <key>`, or `DELETE /api/spaces/{key}?delete_files=1`. Removes its pages from search and MCP, its crawl schedule and its catalog index entry; refused while the space is being crawled.
+
 ## [0.7.2] - 2026-10-22
 
 ### Added

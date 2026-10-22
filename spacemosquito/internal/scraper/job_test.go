@@ -219,3 +219,16 @@ func TestCrawlJobManager_RunJob_alreadyCancelled(t *testing.T) {
 		t.Fatalf("status = %q", got.Status)
 	}
 }
+
+func TestHasActiveJob(t *testing.T) {
+	m := &CrawlJobManager{jobs: map[string]*CrawlJob{
+		"a": {SpaceURL: "https://x.atlassian.net/wiki/spaces/RUN/overview", Status: JobStatusRunning},
+		"b": {SpaceURL: "https://x.atlassian.net/wiki/spaces/DONE/overview", Status: JobStatusCompleted},
+		"c": {SpaceURL: "https://x.atlassian.net/wiki/spaces/WAIT", Status: JobStatusPending},
+	}}
+	for key, want := range map[string]bool{"RUN": true, "WAIT": true, "DONE": false, "NONE": false} {
+		if got := m.HasActiveJob(key); got != want {
+			t.Errorf("HasActiveJob(%q) = %v, want %v", key, got, want)
+		}
+	}
+}

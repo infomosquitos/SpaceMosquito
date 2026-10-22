@@ -104,6 +104,7 @@ curl -s "http://localhost:56403/api/pages/42?space_key=TST"
 | `search <query>` | Full-text search (`--limit N`; multi-word AND) |
 | `get-page <id>` | Get page by Confluence ID (optional space key) |
 | `reindex` | Rebuild FTS indexes (`--content` regenerates Markdown from saved HTML) |
+| `delete-space [--delete-files] <space-key>` | Remove a space from catalog, search/MCP and cron (saved files kept unless `--delete-files`); also via 🗑 in the extension's Spaces tab |
 | `stats` | Database statistics |
 | `version` | Print build version |
 

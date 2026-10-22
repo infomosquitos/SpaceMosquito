@@ -113,6 +113,19 @@ func (m *CrawlJobManager) GetJob(jobID string) (*CrawlJob, error) {
 	return job, nil
 }
 
+// HasActiveJob reports whether a crawl of spaceKey is pending or running.
+func (m *CrawlJobManager) HasActiveJob(spaceKey string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	for _, job := range m.jobs {
+		if (job.Status == JobStatusPending || job.Status == JobStatusRunning) &&
+			session.GetSpaceKeyFromURL(job.SpaceURL) == spaceKey {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *CrawlJobManager) ListJobs() *JobSnapshot {
 	m.mu.RLock()
 	defer m.mu.RUnlock()

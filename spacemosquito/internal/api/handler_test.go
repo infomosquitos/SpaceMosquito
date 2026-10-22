@@ -311,7 +311,7 @@ func TestSpacesHandler_validation(t *testing.T) {
 }
 
 func TestSpaceByIDHandler_validation(t *testing.T) {
-	h := SpaceByIDHandler(nil, logging.Sugar{})
+	h := SpaceByIDHandler(nil, "", nil, nil, logging.Sugar{})
 
 	req := httptest.NewRequest(http.MethodGet, "/api/spaces/", nil)
 	rec := httptest.NewRecorder()

@@ -151,7 +151,7 @@ function applyGating(): void {
   }
 
   document.querySelectorAll<HTMLButtonElement | HTMLSelectElement | HTMLInputElement>(
-    '#spaces-list .btn-icon:not(.btn-browse), #spaces-list select, #spaces-list input[type="checkbox"]'
+    '#spaces-list .btn-icon:not(.btn-browse):not(.btn-delete), #spaces-list select, #spaces-list .space-cron-panel input[type="checkbox"]'
   ).forEach((el) => {
     el.disabled = !allow;
   });
@@ -690,6 +690,70 @@ function setCronButtonState(btn: Element | null, enabled: boolean): void {
   btn.setAttribute('title', enabled ? 'Cron enabled' : 'Cron disabled');
 }
 
+/** API errors arrive as `HTTP 409: {"error":"..."}`; show just the message. */
+function apiErrorMessage(error: unknown): string {
+  const text = (error as Error)?.message || String(error);
+  const json = text.indexOf('{');
+  if (json >= 0) {
+    try {
+      const body = JSON.parse(text.slice(json));
+      if (typeof body?.error === 'string') return body.error;
+    } catch { /* not JSON */ }
+  }
+  return text;
+}
+
+// Inline confirmation (extension popups cannot rely on window.confirm).
+// Built with textContent only: space keys come from the backend.
+function toggleDeletePanel(row: HTMLElement, space: CrawlSpace): void {
+  const panel = row.querySelector('.space-delete-panel') as HTMLElement | null;
+  if (!panel) return;
+  const wasOpen = !panel.classList.contains('hidden');
+  document.querySelectorAll('.space-delete-panel').forEach((p) => p.classList.add('hidden'));
+  if (wasOpen) return;
+
+  panel.textContent = '';
+  const msg = document.createElement('div');
+  msg.textContent = `Remove ${space.space_key}? ${space.pages_crawled} page(s) leave search and MCP; its crawl schedule is removed.`;
+  const label = document.createElement('label');
+  label.className = 'delete-files';
+  const files = document.createElement('input');
+  files.type = 'checkbox';
+  label.append(files, ` Also delete saved files (saved/${space.space_key})`);
+  const actions = document.createElement('div');
+  actions.className = 'delete-actions';
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'btn btn-danger btn-small';
+  remove.textContent = 'Remove';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'btn btn-small';
+  cancel.textContent = 'Cancel';
+  actions.append(remove, cancel);
+  const status = document.createElement('div');
+  status.className = 'crawl-error';
+
+  cancel.addEventListener('click', () => panel.classList.add('hidden'));
+  remove.addEventListener('click', async () => {
+    remove.disabled = true;
+    cancel.disabled = true;
+    status.textContent = '';
+    try {
+      const result = await api.deleteSpace(space.space_key, files.checked);
+      if (result.warning) alert(`Removed ${space.space_key}, but: ${result.warning}`);
+      await loadSpaces();
+    } catch (error) {
+      status.textContent = 'Remove failed: ' + apiErrorMessage(error);
+      remove.disabled = false;
+      cancel.disabled = false;
+    }
+  });
+
+  panel.append(msg, label, actions, status);
+  panel.classList.remove('hidden');
+}
+
 async function toggleCronPanel(row: HTMLElement, space: CrawlSpace): Promise<void> {
   const panel = row.querySelector('.space-cron-panel') as HTMLElement | null;
   if (!panel) return;
@@ -833,6 +897,7 @@ async function loadSpaces() {
           ${space.browse_path ? '<button type="button" class="btn-icon btn-browse" title="Browse saved pages">📖</button>' : '<span></span>'}
           <button type="button" class="btn-icon btn-play${running ? ' btn-stop' : ''}" title="${running ? 'Stop crawl' : 'Crawl'}" data-url="${space.space_url}">${running ? '⏹' : '▶'}</button>
           <button type="button" class="btn-icon btn-cron${cronEnabled.has(space.space_key) ? ' cron-on' : ''}" title="${cronEnabled.has(space.space_key) ? 'Cron enabled' : 'Cron disabled'}">⏱</button>
+          ${space.created_at ? '<button type="button" class="btn-icon btn-delete" title="Remove space">🗑</button>' : '<span></span>'}
         </div>
         ${neverCrawled && isCurrent ? '<div class="space-row-sub">Not crawled yet</div>' : ''}
         <div class="space-crawl-panel${running ? '' : ' hidden'}">
@@ -840,6 +905,7 @@ async function loadSpaces() {
           <div class="space-progress-label">Crawling…</div>
         </div>
         <div class="space-cron-panel hidden"></div>
+        <div class="space-delete-panel hidden"></div>
       `;
       list.appendChild(row);
 
@@ -870,6 +936,11 @@ async function loadSpaces() {
         // Served by the backend: browsers do not let extensions open file:// pages.
         await browser.tabs.create({ url: api.getBackendUrl() + space.browse_path });
         window.close();
+      });
+
+      row.querySelector('.btn-delete')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleDeletePanel(row, space);
       });
 
       row.querySelector('.btn-cron')?.addEventListener('click', async (e) => {
