@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The page tree sidebar shows the space's page count and last crawl time under the space name.
+
 ## [0.7.7] - 2026-10-22
 
 ### Added

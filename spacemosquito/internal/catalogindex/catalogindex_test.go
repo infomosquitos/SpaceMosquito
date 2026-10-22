@@ -149,7 +149,7 @@ func TestWriteSpace(t *testing.T) {
 	}
 	treeJS := read(filepath.Join(spaceDir, catalogindex.TreeScriptFile))
 	for _, want := range []string{
-		`"key":"TST","title":"Test Space (TST)"`,
+		`"key":"TST","title":"Test Space (TST)","meta":"2 pages"`,
 		`{"t":"Home","d":"10-Home","c":[{"t":"Data mapping iFlow \u003e [Commerce]","d":"11-Data mapping iFlow \u003e [Commerce]"}]}`,
 		`getElementById("sm-nav")`,
 		`/api/search?highlight=1&limit=10&space_key=`,

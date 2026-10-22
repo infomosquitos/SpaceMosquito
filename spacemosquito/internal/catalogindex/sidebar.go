@@ -33,8 +33,9 @@ func writeTreeScript(spaceDir string, tree *Space) error {
 	data, err := json.Marshal(struct {
 		Key   string      `json:"key"`
 		Title string      `json:"title"`
+		Meta  string      `json:"meta"`
 		Roots []*treeNode `json:"roots"`
-	}{tree.Key, spaceHeading(tree.Key, tree.Name), toTreeNodes(tree.Roots)})
+	}{tree.Key, spaceHeading(tree.Key, tree.Name), fmt.Sprintf("%d pages%s", tree.Pages, crawledSuffix(tree.LastCrawled)), toTreeNodes(tree.Roots)})
 	if err != nil {
 		return fmt.Errorf("encode tree: %w", err)
 	}
@@ -69,7 +70,8 @@ const sidebarScript = `function (tree) {
     "#sm-nav { position: sticky; top: 0; height: 100vh; box-sizing: border-box; overflow: auto; padding: 16px 12px; border-right: 1px solid #8884; font-size: 14px; line-height: 1.5; background: Canvas; }",
     "body.sm-with-nav .sm-content { max-width: 960px; padding: 24px 32px; box-sizing: border-box; }",
     "#sm-nav .sm-head { position: sticky; top: -16px; margin: -16px -12px 8px; padding: 16px 12px 8px; background: Canvas; border-bottom: 1px solid #8884; z-index: 1; }",
-    "#sm-nav .sm-space { display: block; font-weight: 600; margin-bottom: 8px; text-decoration: none; }",
+    "#sm-nav .sm-space { display: block; font-weight: 600; text-decoration: none; }",
+    "#sm-nav .sm-meta { margin-bottom: 8px; font-size: 12px; opacity: .7; }",
     "#sm-nav .sm-tools { display: flex; gap: 4px; }",
     "#sm-nav input { flex: 1; min-width: 0; padding: 4px 8px; font: inherit; font-size: 13px; border: 1px solid #8886; border-radius: 4px; background: transparent; color: inherit; }",
     "#sm-nav button, #sm-toggle { font: inherit; font-size: 13px; padding: 2px 8px; border: 1px solid #8886; border-radius: 4px; background: Canvas; color: inherit; cursor: pointer; }",
@@ -188,6 +190,7 @@ const sidebarScript = `function (tree) {
 
   var head = el("div", "sm-head");
   head.appendChild(home);
+  head.appendChild(el("div", "sm-meta", tree.meta));
   head.appendChild(tools);
   nav.appendChild(head);
   nav.appendChild(root);
