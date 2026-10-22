@@ -21,7 +21,7 @@ const (
 	defaultRetryDelay = 2 * time.Second
 	// DefaultAssetDelay is the pause before each image/attachment download
 	// (storage.asset_delay_ms); throttling by Confluence raises it.
-	DefaultAssetDelay = 2500 * time.Millisecond
+	DefaultAssetDelay = 1500 * time.Millisecond
 	maxAssetDelay     = 30 * time.Second
 )
 

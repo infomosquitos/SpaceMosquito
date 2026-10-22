@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- The default pause before each image/attachment download is 1.5 s (was 2.5 s); `storage.asset_delay_ms` still overrides it, and throttling by Confluence still slows downloads down.
+
 ## [0.8.9] - 2026-10-22
 
 ### Added

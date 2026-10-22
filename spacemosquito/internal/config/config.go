@@ -69,7 +69,7 @@ type StorageConfig struct {
 }
 
 // DefaultAssetDelayMS is the download pause when none is configured.
-const DefaultAssetDelayMS = 2500
+const DefaultAssetDelayMS = 1500
 
 // AssetDelay returns the pause before each asset download.
 func (s StorageConfig) AssetDelay() time.Duration {
