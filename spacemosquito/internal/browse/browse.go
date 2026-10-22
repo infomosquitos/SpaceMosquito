@@ -403,7 +403,7 @@ func renderPageView(w io.Writer, savedBase string, sp *catalogindex.Space, dir s
 
 // calloutStart matches a Confluence panel as content.md renders it: a
 // blockquote opening with its bold type label (see csf.calloutBlock).
-var calloutStart = regexp.MustCompile(`<blockquote>\s*<p><strong>(Info|Note|Warning|Tip|Success|Error):</strong>`)
+var calloutStart = regexp.MustCompile(`<blockquote>\s*<p><strong>(Info|Note|Warning|Tip|Success|Error|Decision)(?: \(open\))?:</strong>`)
 
 // markCallouts tags panel blockquotes with their type (sm-callout-warning, …)
 // so the stylesheet can color them like Confluence does.

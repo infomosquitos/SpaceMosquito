@@ -11,7 +11,7 @@ func TestADF_decisionList(t *testing.T) {
 		`<ac:adf-node type="decision-item"><ac:adf-attribute key="state">UNDECIDED</ac:adf-attribute><ac:adf-content>Pick a vendor</ac:adf-content></ac:adf-node>` +
 		`</ac:adf-node><ac:adf-fallback><ul class="decision-list"><li>No decisions taken</li></ul></ac:adf-fallback></ac:adf-extension><p>after</p>`
 	got, _ := convert(t, in, nil)
-	for _, want := range []string{"- **Decision:** No decisions **taken**", "- **Decision (open):** Pick a vendor", "after"} {
+	for _, want := range []string{"> **Decision:** No decisions **taken**\n>\n> **Decision (open):** Pick a vendor", "after"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in:\n%s", want, got)
 		}

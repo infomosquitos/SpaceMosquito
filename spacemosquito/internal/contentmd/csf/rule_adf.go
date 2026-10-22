@@ -50,7 +50,9 @@ var adfPanelLabels = map[string]string{
 func renderADFNode(node *goquery.Selection, ctx *RenderContext) string {
 	switch node.AttrOr("type", "") {
 	case "decision-list":
-		var b strings.Builder
+		// One callout for the list, each decision on its own paragraph, as
+		// Confluence shows a decision panel.
+		var items []string
 		node.Children().Each(func(_ int, item *goquery.Selection) {
 			if tagName(item) != "ac:adf-node" || item.AttrOr("type", "") != "decision-item" {
 				return
@@ -66,12 +68,9 @@ func renderADFNode(node *goquery.Selection, ctx *RenderContext) string {
 			if st := adfAttr(item, "state"); st != "" && !strings.EqualFold(st, "DECIDED") {
 				label = "Decision (open)"
 			}
-			b.WriteString("- **" + label + ":** " + text + "\n")
+			items = append(items, "**"+label+":** "+text)
 		})
-		if b.Len() == 0 {
-			return ""
-		}
-		return "\n\n" + b.String() + "\n"
+		return calloutBlock("", strings.Join(items, "\n\n"))
 	case "panel":
 		body := ""
 		if c := adfChild(node, "ac:adf-content"); c != nil {

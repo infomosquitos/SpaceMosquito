@@ -1,9 +1,15 @@
 package csf
 
-import "github.com/PuerkitoBio/goquery"
+import (
+	"strings"
 
-// statusRule renders the status macro as its title in inline code (e.g.
-// `Tested successfully`). The colour param is dropped.
+	"github.com/PuerkitoBio/goquery"
+)
+
+// statusRule renders the status macro (a colored lozenge) as its title in
+// inline code, upper-cased as Confluence displays it (e.g. `TESTED
+// SUCCESSFULLY`; a typed "moderATE" shows as MODERATE there too). The colour
+// param is dropped.
 type statusRule struct{}
 
 func (statusRule) Name() string { return "status" }
@@ -17,5 +23,5 @@ func (statusRule) Render(sel *goquery.Selection, _ *RenderContext) (string, erro
 	if title == "" {
 		return "", nil
 	}
-	return renderInlineCode(title), nil
+	return renderInlineCode(strings.ToUpper(title)), nil
 }

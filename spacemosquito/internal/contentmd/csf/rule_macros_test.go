@@ -27,7 +27,7 @@ func TestJira_noKeyDropped(t *testing.T) {
 func TestStatus_titleInlineCode(t *testing.T) {
 	in := `<p>Result: <ac:structured-macro ac:name="status"><ac:parameter ac:name="colour">Green</ac:parameter><ac:parameter ac:name="title">Tested successfully</ac:parameter></ac:structured-macro></p>`
 	got := md(t, in)
-	if !strings.Contains(got, "`Tested successfully`") {
+	if !strings.Contains(got, "`TESTED SUCCESSFULLY`") { // upper-cased as Confluence shows it
 		t.Fatalf("status title not inline code: %q", got)
 	}
 	if strings.Contains(got, "Green") {

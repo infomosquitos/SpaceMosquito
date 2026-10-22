@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- Decision lists show as one light green box (dark green in dark mode), each decision on its own line, like Confluence's decision panel.
+
+### Fixed
+- Status labels are shown in capitals as in Confluence (`MODERATE`); titles typed in mixed case ("moderATE") no longer show through.
+
 ## [0.8.4] - 2026-10-22
 
 ### Fixed
