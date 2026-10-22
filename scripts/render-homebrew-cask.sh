@@ -42,6 +42,8 @@ cask "spacemosquito" do
     strategy :github_latest
   end
 
+  depends_on :macos
+
   binary "spacemosquito-darwin-#{arch}", target: "spacemosquito"
 
   # Release binaries are not notarized; drop the quarantine flag so
@@ -56,12 +58,31 @@ cask "spacemosquito" do
   zap trash: "~/.spacemosquito"
 
   caveats <<~EOS
-    First run:
-      spacemosquito init
-      spacemosquito serve
+    Next steps:
 
-    The browser extension is installed separately:
-      https://github.com/infomosquitos/spacemosquito/blob/main/docs/INSTALL.md#browser-extension
+    1. Create config, database and encryption key in ~/.spacemosquito:
+         spacemosquito init
+       (add --download-browser to pre-fetch Chromium, ~150 MB, for fallback crawls)
+
+    2. Start the server (keep it running; it listens on http://localhost:56403):
+         spacemosquito serve
+
+    3. Install the browser extension (Homebrew cannot do this for you).
+       Download it from https://github.com/infomosquitos/spacemosquito/releases/tag/v#{version}
+         Firefox: spacemosquito-firefox-v#{version}.xpi
+                  about:addons -> gear icon -> Install Add-on From File...
+         Chrome:  spacemosquito-chrome-v#{version}.zip, unzip it, then
+                  chrome://extensions -> Developer mode -> Load unpacked
+       Details: https://github.com/infomosquitos/spacemosquito/blob/main/docs/INSTALL.md#browser-extension
+
+    4. Log in to Confluence, open the SpaceMosquito extension popup and click
+       "Session" to send your login to the local server.
+
+    5. Crawl a space from the popup's Spaces tab, or from the terminal:
+         spacemosquito crawl "https://your-domain.atlassian.net/wiki/spaces/SPACEKEY"
+
+    6. Optional: connect AI agents via MCP at http://127.0.0.1:56403/mcp
+       https://github.com/infomosquitos/spacemosquito/blob/main/docs/guides/configure-mcp.md
 
     \`brew uninstall --zap spacemosquito\` also deletes ~/.spacemosquito
     (catalog, config and encryption key).
