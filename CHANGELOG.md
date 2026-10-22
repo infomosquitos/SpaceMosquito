@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.5] - 2026-10-22
+
 ### Changed
 - Decision lists show as one light green box (dark green in dark mode), each decision on its own line, like Confluence's decision panel.
 
