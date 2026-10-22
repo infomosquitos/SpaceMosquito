@@ -523,6 +523,7 @@ async function syncRunningCrawls(): Promise<void> {
 
     const finished = [...prevKeys].filter((k) => !runningBySpace.has(k));
     renderAllCrawlRows();
+    if (finished.length === 0) await revealBrowseLinks();
 
     if (finished.length > 0) {
       await loadSpaces();
@@ -533,6 +534,21 @@ async function syncRunningCrawls(): Promise<void> {
     else stopCrawlPollingIfIdle();
   } catch (error) {
     console.error('[spacemosquito] crawl sync error:', error);
+  }
+}
+
+// A crawl writes the space's page tree early; show 📖 for running spaces as
+// soon as it exists, without re-rendering the list (open panels stay open).
+async function revealBrowseLinks(): Promise<void> {
+  const pending = Array.from(document.querySelectorAll<HTMLElement>('.space-row[data-key]'))
+    .filter((r) => !r.dataset.browse && runningBySpace.has(r.dataset.key || ''));
+  if (pending.length === 0) return;
+  const paths = new Map((await api.listSpaces()).map((s) => [s.space_key, s.browse_path || '']));
+  for (const row of pending) {
+    const path = paths.get(row.dataset.key || '');
+    if (!path) continue;
+    row.dataset.browse = path;
+    row.querySelector('.btn-browse')?.classList.remove('invisible');
   }
 }
 
@@ -888,12 +904,13 @@ async function loadSpaces() {
       row.className = 'space-row' + (isCurrent ? ' current' : '');
       row.dataset.key = space.space_key;
       row.dataset.url = space.space_url || '';
+      row.dataset.browse = space.browse_path || '';
       row.innerHTML = `
         <div class="space-row-main">
           <span class="space-row-name" title="${space.space_url || ''}">${space.space_key}</span>
           <span class="space-row-counts"${countsTitle ? ` title="${countsTitle}"` : ''}>${formatCounts(space)}</span>
           <span class="space-row-date" title="${dateTitle}">${dateLabel}</span>
-          ${space.browse_path ? '<button type="button" class="btn-icon btn-browse" title="Browse saved pages">📖</button>' : '<span></span>'}
+          <button type="button" class="btn-icon btn-browse${space.browse_path ? '' : ' invisible'}" title="Browse saved pages">📖</button>
           <button type="button" class="btn-icon btn-play${running ? ' btn-stop' : ''}" title="${running ? 'Stop crawl' : 'Crawl'}" data-url="${space.space_url}">${running ? '⏹' : '▶'}</button>
           <button type="button" class="btn-icon btn-cron${cronEnabled.has(space.space_key) ? ' cron-on' : ''}" title="${cronEnabled.has(space.space_key) ? 'Cron enabled' : 'Cron disabled'}">⏱</button>
           ${space.created_at ? '<button type="button" class="btn-icon btn-delete" title="Remove space">🗑</button>' : '<span></span>'}
@@ -933,7 +950,9 @@ async function loadSpaces() {
       row.querySelector('.btn-browse')?.addEventListener('click', async (e) => {
         e.stopPropagation();
         // Served by the backend: browsers do not let extensions open file:// pages.
-        await chrome.tabs.create({ url: api.getBackendUrl() + space.browse_path });
+        const path = row.dataset.browse;
+        if (!path) return;
+        await chrome.tabs.create({ url: api.getBackendUrl() + path });
         window.close();
       });
 

@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- 📖 in the extension's **Spaces** tab is available while a crawl is still running: the space's page tree is written when the crawl starts and refreshed as pages are saved (reload it to see newer pages).
+
 ## [0.7.3] - 2026-10-22
 
 ### Added

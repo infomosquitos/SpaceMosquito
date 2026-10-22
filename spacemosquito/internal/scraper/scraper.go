@@ -329,6 +329,11 @@ func (s *Scraper) CrawlSpace(spaceURL string, sess *session.Session) error {
 			"error", err)
 	}
 
+	// Write the page tree up front and refresh it as pages are saved, so the
+	// saved catalog can be browsed while the crawl is still running.
+	s.writeCatalogIndex(pageInfo.SpaceKey)
+	savedSinceIndex := 0
+
 	for i, pg := range pageInfo.Pages {
 		s.log.Infow("crawling page",
 			"space_key", pageInfo.SpaceKey,
@@ -406,6 +411,11 @@ func (s *Scraper) CrawlSpace(spaceURL string, sess *session.Session) error {
 		s.mu.Lock()
 		s.stats.TotalPages++
 		s.mu.Unlock()
+
+		if savedSinceIndex++; savedSinceIndex >= catalogIndexRefreshEvery {
+			s.writeCatalogIndex(pageInfo.SpaceKey)
+			savedSinceIndex = 0
+		}
 	}
 
 	duration := time.Since(crawlStart)
@@ -445,6 +455,10 @@ func (s *Scraper) CrawlSpace(spaceURL string, sess *session.Session) error {
 
 	return nil
 }
+
+// catalogIndexRefreshEvery is how many newly saved pages trigger a page tree
+// rewrite during a space crawl.
+const catalogIndexRefreshEvery = 20
 
 // writeCatalogIndex rebuilds the space page tree and root catalog index
 // (best-effort: a failure leaves the previous index and is only logged).

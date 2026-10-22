@@ -395,6 +395,10 @@ body {
   margin-top: 8px;
 }
 
+.btn-icon.invisible {
+  visibility: hidden;
+}
+
 .hidden {
   display: none !important;
 }
