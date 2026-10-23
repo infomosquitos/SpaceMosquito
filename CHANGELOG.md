@@ -7,8 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.10] - 2026-10-23
+
 ### Changed
 - The default pause before each image/attachment download is 1.5 s (was 2.5 s); `storage.asset_delay_ms` still overrides it, and throttling by Confluence still slows downloads down.
+
+### Fixed
+- The extension's ▶ (crawl) and ⏱ (cron) buttons no longer turn disabled during and after a crawl longer than an hour: a crawl that keeps getting pages from Confluence renews the session's validation (every 5 min), which used to expire 60 min after the last capture.
 
 ## [0.8.9] - 2026-10-22
 

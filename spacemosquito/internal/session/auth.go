@@ -55,3 +55,17 @@ func (st *Store) ClearValidationForURL(encKey, confluenceURL string) error {
 	}
 	return nil
 }
+
+// MarkValidatedForURL records that Confluence just accepted the host session
+// (e.g. a crawl request succeeded), so status stays valid while it is in use
+// instead of expiring after ValidateTTL mid-crawl. The session is reloaded
+// first so a concurrent recapture is not overwritten.
+func (st *Store) MarkValidatedForURL(encKey, confluenceURL string) error {
+	sess, err := st.GetForURL(encKey, confluenceURL)
+	if err != nil {
+		return err
+	}
+	now := time.Now()
+	sess.ValidatedAt = &now
+	return st.Upsert(sess, encKey)
+}

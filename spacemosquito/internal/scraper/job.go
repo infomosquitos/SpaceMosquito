@@ -340,6 +340,9 @@ func (r *CrawlRunner) Run(ctx context.Context, job *CrawlJob) error {
 		return fmt.Errorf("discover space: %w", err)
 	}
 
+	keepSessionValid := r.sessionKeeper(job, encKey)
+	keepSessionValid()
+
 	job.TotalPages = len(pageInfo.Pages)
 	now := time.Now()
 	job.UpdatedAt = now
@@ -426,6 +429,8 @@ func (r *CrawlRunner) Run(ctx context.Context, job *CrawlJob) error {
 				}
 				continue
 			}
+		} else {
+			keepSessionValid()
 		}
 
 		r.manager.mu.Lock()
@@ -460,6 +465,27 @@ func (r *CrawlRunner) Run(ctx context.Context, job *CrawlJob) error {
 	reconcileSpacePagesTotal(context.Background(), r.manager.db, pageInfo.SpaceKey, job.TotalPages, r.log)
 
 	return nil
+}
+
+// sessionValidRefresh is how often a crawl that keeps getting pages from
+// Confluence renews the session's validation, so the extension does not
+// report it expired (and gate its buttons) during a crawl longer than
+// session.ValidateTTL.
+const sessionValidRefresh = 5 * time.Minute
+
+// sessionKeeper returns a func to call after each successful Confluence
+// request; it renews the validation at most every sessionValidRefresh.
+func (r *CrawlRunner) sessionKeeper(job *CrawlJob, encKey string) func() {
+	var last time.Time
+	return func() {
+		if time.Since(last) < sessionValidRefresh {
+			return
+		}
+		last = time.Now()
+		if err := r.manager.store.MarkValidatedForURL(encKey, job.SpaceURL); err != nil {
+			r.log.Warnw("failed to renew session validation", "job_id", job.ID, "error", err)
+		}
+	}
 }
 
 func (r *CrawlRunner) abortForUnauthorized(job *CrawlJob, encKey, operation string, err error) {
